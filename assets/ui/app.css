@@ -2,7 +2,7 @@
 
 :root {
   --font-sans: "Segoe UI Variable Text", "Segoe UI", "Heebo", "Rubik", system-ui, Arial, sans-serif;
-  --font-serif: "Charter", "Georgia", "Frank Ruehl CLM", "FrankRuehl", "David", "David CLM", "Times New Roman", serif;
+  --font-serif: "Charter", "Georgia", "Frank Ruehl CLM", "Times New Roman", "David", serif;
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Code", "Cascadia Mono", "Consolas", "Courier New", monospace;
 
@@ -103,7 +103,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 button { font: inherit; color: inherit; }
-svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+/* UI icons only (they all use the sprite); never document SVGs (Mermaid, KaTeX, images) */
+:where(svg:has(> use)) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 kbd {
   font-family: var(--font-ui); font-size: 11px; color: var(--faint);
   border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; line-height: 17px;
@@ -227,8 +228,11 @@ body.no-doc #doc, body.no-doc #doc-foot { display: none; }
 #recent li:hover { background: var(--hover); }
 #recent li .r-icon { color: var(--accent); opacity: .85; }
 #recent li .r-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#recent li .r-name { font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; text-align: left; }
-#recent li .r-dir { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; unicode-bidi: plaintext; }
+#recent li .r-name { font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; text-align: start; }
+:root[dir="rtl"] #recent li .r-name { text-align: right; }
+:root:not([dir="rtl"]) #recent li .r-name { text-align: left; }
+#recent li .r-dir { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: left; }
+:root[dir="rtl"] #recent li .r-dir { text-align: right; }
 #recent li.missing { opacity: .5; }
 #recent li .r-x { visibility: hidden; }
 #recent li:hover .r-x { visibility: visible; }
@@ -377,7 +381,7 @@ body.no-doc #doc, body.no-doc #doc-foot { display: none; }
 mark.find-hit { background: var(--mark); color: inherit; border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--mark-current) 40%, transparent); }
 mark.find-hit.current { background: var(--mark-current); color: #000; }
 #findbar {
-  position: fixed; top: calc(var(--toolbar-h) + 10px); right: 16px; z-index: 30;
+  position: fixed; top: calc(var(--toolbar-h) + 10px); inset-inline-end: 16px; z-index: 30;
   display: flex; align-items: center; gap: 4px; padding: 5px 5px 5px 10px;
   background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow);
   animation: pop .14s ease;
@@ -389,7 +393,7 @@ mark.find-hit.current { background: var(--mark-current); color: #000; }
 
 /* popovers */
 .pop {
-  position: fixed; top: calc(var(--toolbar-h) + 6px); right: 10px; z-index: 40;
+  position: fixed; top: calc(var(--toolbar-h) + 6px); inset-inline-end: 10px; z-index: 40;
   background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: var(--shadow); padding: 12px; animation: pop .14s ease; user-select: none;
 }
@@ -424,7 +428,7 @@ mark.find-hit.current { background: var(--mark-current); color: #000; }
 #modal { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .32); display: flex; align-items: center; justify-content: center; padding: 20px; animation: fade .15s; }
 @keyframes fade { from { opacity: 0; } }
 .modal-card { position: relative; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 24px 28px; max-width: 560px; width: 100%; max-height: 86vh; overflow: auto; animation: pop .16s ease; }
-.modal-x { position: absolute; top: 10px; right: 10px; }
+.modal-x { position: absolute; top: 10px; inset-inline-end: 10px; }
 .modal-card h2 { margin: 0 0 14px; font-size: 18px; color: var(--fg-strong); }
 .modal-card table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .modal-card td { padding: 5px 0; border-bottom: 1px solid var(--border); color: var(--fg); }
@@ -465,3 +469,30 @@ mark.find-hit.current { background: var(--mark-current); color: #000; }
   #doc a.ext::after { content: none; }
   mark.find-hit { background: none; box-shadow: none; }
 }
+
+/* ── Hebrew interface ────────────────────────────────── */
+:root[dir="rtl"] body { font-family: "Segoe UI Variable Text", "Segoe UI", "Heebo", system-ui, sans-serif; }
+:root[dir="rtl"] #btn-back svg, :root[dir="rtl"] #btn-fwd svg { transform: scaleX(-1); }
+:root[dir="rtl"] .sb-head, :root[dir="rtl"] .recent-head { letter-spacing: 0; }
+:root[dir="rtl"] .card { padding: 14px 18px 14px 14px; }
+:root[dir="rtl"] #doc-title-file { margin-left: 0; margin-right: 8px; }
+:root[dir="rtl"] #doc-title { direction: rtl; }
+
+/* ── Math (KaTeX) ────────────────────────────────────── */
+#doc .math { unicode-bidi: isolate; direction: ltr; }
+#doc .math-display, #doc .math-block .math { display: block; text-align: center; margin: 1em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+#doc .math-block { margin: 0; }
+#doc .katex { font-size: 1.1em; }
+#doc .katex-display { margin: 0; }
+#doc .math.pending { font-family: var(--font-mono); font-size: .9em; color: var(--muted); }
+#doc .math.error { color: #dc2626; font-family: var(--font-mono); font-size: .88em; white-space: pre-wrap; }
+
+/* ── Diagrams (Mermaid) ──────────────────────────────── */
+#doc .mermaid-block { margin: 0 0 1.05em; text-align: center; overflow-x: auto; direction: ltr; }
+#doc .mermaid-block svg { max-width: 100%; height: auto; }
+#doc .mermaid-block.rendered { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+#doc .mermaid-src { text-align: left; }
+#doc .mermaid-error { font-family: var(--font-ui); font-size: .8em; color: #dc2626; text-align: start; margin: .3em 0 0; }
+@media print { #doc .mermaid-block.rendered { border: 0; } }
+
+body.no-doc #sidebar { visibility: hidden; }

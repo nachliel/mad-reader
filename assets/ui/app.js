@@ -8,7 +8,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const send = (cmd, extra = {}) => window.ipc.postMessage(JSON.stringify({ cmd, ...extra }));
 
-const DEFAULTS = { theme: 'system', font: 'sans', size: 17, leading: 'normal', width: 'normal', direction: 'auto', justify: 'off', toc: true };
+const DEFAULTS = { theme: 'system', font: 'sans', size: 17, leading: 'normal', width: 'normal', direction: 'auto', justify: 'off', toc: true, lang: 'auto' };
 const ORIGIN = 'http://madreader.localhost';
 
 const root = document.documentElement;
@@ -27,8 +27,114 @@ const state = {
   isDefault: false,
   dismissedDefaultHint: false,
   version: '',
+  sysLang: 'en',
   find: { hits: [], idx: -1, query: '' },
 };
+
+/* ── Interface language ──────────────────────────────── */
+
+const STRINGS = {
+  en: {
+    tocTip: 'Contents (Ctrl+B)', backTip: 'Back (Alt+←)', fwdTip: 'Forward (Alt+→)', openTip: 'Open file (Ctrl+O)',
+    findTip: 'Find (Ctrl+F)', dirTip: 'Text direction (Ctrl+D)', aaTip: 'Appearance', moreTip: 'More',
+    contents: 'Contents', noHeadings: 'No headings',
+    tagline: 'Markdown, beautifully. <span dir="rtl" lang="he">גם בעברית.</span>',
+    openFile: 'Open file', userGuide: 'User guide', dropHint: '…or drop a Markdown file anywhere in this window',
+    installTitle: 'Install Mad Reader', installText: 'Adds it to the Start menu and to “Open with” for .md files. No admin rights needed.', install: 'Install',
+    defaultTitle: 'Open .md files with Mad Reader', defaultText: 'Windows asks you to confirm the default app once, in Settings → Default apps.',
+    setDefault: 'Set as default', dontShow: "Don't show again",
+    recent: 'Recent', clear: 'Clear', removeRecent: 'Remove from list', fileMissing: 'File not found',
+    findPh: 'Find in document', prevTip: 'Previous (Shift+Enter)', nextTip: 'Next (Enter)', closeTip: 'Close (Esc)',
+    theme: 'Theme', auto: 'Auto', followWindows: 'Follow Windows', light: 'Light', sepia: 'Sepia', dark: 'Dark',
+    font: 'Font', sans: 'Sans · אבג', serif: 'Serif · אבג', textSize: 'Text size', smallerTip: 'Smaller (Ctrl+−)', largerTip: 'Larger (Ctrl+=)',
+    lineSpacing: 'Line spacing', compact: 'Compact', normal: 'Normal', relaxed: 'Relaxed',
+    pageWidth: 'Page width', narrow: 'Narrow', wide: 'Wide', full: 'Full',
+    direction: 'Direction', dirAutoTip: 'Per paragraph, from its language', rtl: 'RTL · ימין', ltr: 'LTR',
+    justify: 'Justify text', off: 'Off', on: 'On', language: 'Language',
+    mEdit: 'Open in editor', mReveal: 'Show in folder', mOpenWith: 'Open with…', mCopyPath: 'Copy file path',
+    mPrint: 'Print / Save as PDF', mReload: 'Reload', mNewWindow: 'New window', mFullscreen: 'Full screen',
+    mHome: 'Home', mShortcuts: 'Keyboard shortcuts', mDefaultApps: 'Default app settings…', mAbout: 'About Mad Reader',
+    dropToOpen: 'Drop to open', autoShort: 'Auto',
+    copy: 'Copy', copied: 'Copied', linkSection: 'Link to this section',
+    footer: (w, m) => `${w} words · ~${m} min read`,
+    dirToast: { auto: 'Direction: automatic per paragraph', rtl: 'Direction: right-to-left', ltr: 'Direction: left-to-right' },
+    themeToast: { system: 'Theme: follow Windows', light: 'Theme: light', sepia: 'Theme: sepia', dark: 'Theme: dark' },
+    pathCopied: 'Path copied', installedToast: 'Installed. Pick “Mad Reader” in the Settings window to make it the default.',
+    diagramError: 'Could not draw this diagram:',
+    shortcutsTitle: 'Keyboard shortcuts',
+    shortcuts: [
+      ['Open file', 'Ctrl O'], ['New window', 'Ctrl N'], ['Close window', 'Ctrl W'],
+      ['Find in document', 'Ctrl F'], ['Next / previous match', 'F3 / Shift F3'],
+      ['Table of contents', 'Ctrl B'], ['Text direction: Auto → RTL → LTR', 'Ctrl D'],
+      ['Theme: Auto → Light → Sepia → Dark', 'Ctrl T'], ['Larger / smaller / reset text', 'Ctrl + / Ctrl − / Ctrl 0'],
+      ['Back / forward', 'Alt ← / Alt →'], ['Reload', 'F5 / Ctrl R'], ['Print or save as PDF', 'Ctrl P'],
+      ['Open in editor', 'Ctrl E'], ['Show in folder', 'Ctrl Shift E'], ['Full screen', 'F11'],
+      ['Home', 'Ctrl H'], ['Top / bottom', 'Home / End'], ['This list', 'F1'],
+    ],
+    about: 'A fast, good-looking Markdown reader for Windows.<br><span dir="rtl" lang="he">קורא Markdown מהיר ויפה, עם תמיכה מלאה בעברית.</span>',
+  },
+  he: {
+    tocTip: 'תוכן עניינים (Ctrl+B)', backTip: 'אחורה (Alt+←)', fwdTip: 'קדימה (Alt+→)', openTip: 'פתיחת קובץ (Ctrl+O)',
+    findTip: 'חיפוש (Ctrl+F)', dirTip: 'כיוון טקסט (Ctrl+D)', aaTip: 'תצוגה', moreTip: 'עוד',
+    contents: 'תוכן עניינים', noHeadings: 'אין כותרות',
+    tagline: 'קורא Markdown מהיר ויפה, עם תמיכה מלאה בעברית.',
+    openFile: 'פתיחת קובץ', userGuide: 'מדריך למשתמש', dropHint: '…או גררו קובץ Markdown לכל מקום בחלון',
+    installTitle: 'התקנת Mad Reader', installText: 'מוסיף אותו לתפריט התחל ולרשימת „פתח באמצעות” של קובצי md. לא נדרשות הרשאות מנהל.', install: 'התקנה',
+    defaultTitle: 'פתיחת קובצי md עם Mad Reader', defaultText: 'Windows מבקש לאשר את אפליקציית ברירת המחדל פעם אחת, בהגדרות ← אפליקציות ברירת מחדל.',
+    setDefault: 'הגדרה כברירת מחדל', dontShow: 'לא להציג שוב',
+    recent: 'אחרונים', clear: 'ניקוי', removeRecent: 'הסרה מהרשימה', fileMissing: 'הקובץ לא נמצא',
+    findPh: 'חיפוש במסמך', prevTip: 'הקודם (Shift+Enter)', nextTip: 'הבא (Enter)', closeTip: 'סגירה (Esc)',
+    theme: 'ערכת נושא', auto: 'אוטומטי', followWindows: 'לפי Windows', light: 'בהירה', sepia: 'ספיה', dark: 'כהה',
+    font: 'גופן', sans: 'ללא תגים · Aa', serif: 'עם תגים · Aa', textSize: 'גודל טקסט', smallerTip: 'הקטנה (Ctrl+−)', largerTip: 'הגדלה (Ctrl+=)',
+    lineSpacing: 'ריווח שורות', compact: 'צפוף', normal: 'רגיל', relaxed: 'מרווח',
+    pageWidth: 'רוחב עמוד', narrow: 'צר', wide: 'רחב', full: 'מלא',
+    direction: 'כיוון', dirAutoTip: 'לכל פסקה לפי השפה שלה', rtl: 'ימין לשמאל', ltr: 'שמאל לימין',
+    justify: 'יישור לשני הצדדים', off: 'כבוי', on: 'פעיל', language: 'שפה',
+    mEdit: 'פתיחה בעורך', mReveal: 'הצגה בתיקייה', mOpenWith: 'פתיחה באמצעות…', mCopyPath: 'העתקת נתיב הקובץ',
+    mPrint: 'הדפסה / שמירה כ-PDF', mReload: 'רענון', mNewWindow: 'חלון חדש', mFullscreen: 'מסך מלא',
+    mHome: 'מסך הבית', mShortcuts: 'קיצורי מקלדת', mDefaultApps: 'הגדרות אפליקציית ברירת מחדל…', mAbout: 'אודות Mad Reader',
+    dropToOpen: 'שחררו כדי לפתוח', autoShort: 'אוטו׳',
+    copy: 'העתקה', copied: 'הועתק', linkSection: 'קישור לסעיף הזה',
+    footer: (w, m) => `${w} מילים · כ-${m} דקות קריאה`,
+    dirToast: { auto: 'כיוון: אוטומטי לכל פסקה', rtl: 'כיוון: מימין לשמאל', ltr: 'כיוון: משמאל לימין' },
+    themeToast: { system: 'ערכת נושא: לפי Windows', light: 'ערכת נושא: בהירה', sepia: 'ערכת נושא: ספיה', dark: 'ערכת נושא: כהה' },
+    pathCopied: 'הנתיב הועתק', installedToast: 'ההתקנה הושלמה. בחלון ההגדרות בחרו ב-Mad Reader כדי להגדיר אותו כברירת מחדל.',
+    diagramError: 'לא ניתן לצייר את התרשים:',
+    shortcutsTitle: 'קיצורי מקלדת',
+    shortcuts: [
+      ['פתיחת קובץ', 'Ctrl O'], ['חלון חדש', 'Ctrl N'], ['סגירת החלון', 'Ctrl W'],
+      ['חיפוש במסמך', 'Ctrl F'], ['התוצאה הבאה / הקודמת', 'F3 / Shift F3'],
+      ['תוכן עניינים', 'Ctrl B'], ['כיוון טקסט: אוטומטי ← ימין לשמאל ← שמאל לימין', 'Ctrl D'],
+      ['ערכת נושא: אוטומטי ← בהירה ← ספיה ← כהה', 'Ctrl T'], ['הגדלה / הקטנה / איפוס הטקסט', 'Ctrl + / Ctrl − / Ctrl 0'],
+      ['אחורה / קדימה', 'Alt ← / Alt →'], ['רענון', 'F5 / Ctrl R'], ['הדפסה או שמירה כ-PDF', 'Ctrl P'],
+      ['פתיחה בעורך', 'Ctrl E'], ['הצגה בתיקייה', 'Ctrl Shift E'], ['מסך מלא', 'F11'],
+      ['מסך הבית', 'Ctrl H'], ['תחילת / סוף המסמך', 'Home / End'], ['הרשימה הזאת', 'F1'],
+    ],
+    about: 'קורא Markdown מהיר ויפה ל-Windows, עם תמיכה מלאה בעברית.',
+  },
+};
+
+let LANG = 'en';
+const t = (key) => STRINGS[LANG][key] ?? STRINGS.en[key] ?? key;
+
+function applyLang() {
+  const want = state.ui.lang === 'auto' ? state.sysLang : state.ui.lang;
+  LANG = want === 'he' ? 'he' : 'en';
+  root.lang = LANG;
+  root.dir = LANG === 'he' ? 'rtl' : 'ltr';
+  for (const el of $$('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of $$('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);
+  for (const el of $$('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
+  for (const el of $$('[data-i18n-ph]')) el.placeholder = t(el.dataset.i18nPh);
+  $('#dir-label').textContent = state.ui.direction === 'auto' ? t('autoShort') : state.ui.direction.toUpperCase();
+  if (state.doc) {
+    updateFooter();
+    for (const b of $$('.copy-btn:not(.done)', docEl)) b.lastChild.textContent = t('copy');
+    for (const a of $$('.h-anchor', docEl)) a.title = t('linkSection');
+    if (!headings.length) buildToc();
+  }
+  renderWelcome();
+}
 
 /* ── Bidi / RTL ──────────────────────────────────────── */
 
@@ -45,7 +151,8 @@ function proseText(el, skipNested) {
       if (c.nodeType === 3) out += c.nodeValue;
       else if (c.nodeType === 1) {
         const t = c.tagName;
-        if (t === 'CODE' || t === 'PRE' || t === 'KBD' || t === 'svg') continue;
+        if (t === 'CODE' || t === 'PRE' || t === 'KBD' || t === 'svg' || t === 'math') continue;
+        if (c.classList.contains('math') || c.classList.contains('mermaid-block')) continue;
         if (skipNested && (t === 'UL' || t === 'OL' || t === 'TABLE' || t === 'BLOCKQUOTE')) continue;
         if (t === 'BR' || t === 'P' || t === 'LI') out += ' ';
         walk(c);
@@ -98,8 +205,7 @@ function applyDirection() {
     a.dir = h ? (h.getAttribute('dir') || docDir) : docDir;
   }
   tocEl.dir = docDir;
-  $('.sb-head').textContent = docDir === 'rtl' ? 'תוכן עניינים' : 'Contents';
-  $('#dir-label').textContent = mode === 'auto' ? 'Auto' : mode.toUpperCase();
+  $('#dir-label').textContent = mode === 'auto' ? t('autoShort') : mode.toUpperCase();
   $('#btn-dir').classList.toggle('on', mode !== 'auto');
 }
 
@@ -127,7 +233,12 @@ function applyUI() {
     for (const b of $$('button', seg)) b.classList.toggle('on', String(ui[seg.dataset.key]) === b.dataset.v);
   }
   const dark = theme === 'dark';
-  if (dark !== lastDark) { lastDark = dark; send('theme', { dark }); }
+  if (dark !== lastDark) {
+    const first = lastDark === null;
+    lastDark = dark;
+    send('theme', { dark });
+    if (!first && state.doc) renderDiagrams();
+  }
 }
 darkMQ.addEventListener('change', () => applyUI());
 
@@ -136,6 +247,7 @@ function setUI(patch, { redirection = false } = {}) {
   const anchor = topVisibleBlock();
   Object.assign(state.ui, patch);
   applyUI();
+  if ('lang' in patch) applyLang();
   if (redirection && state.doc) applyDirection();
   if (anchor) restoreAnchor(anchor);
   clearTimeout(saveTimer);
@@ -169,8 +281,9 @@ MR.init = (cfg) => {
   state.installed = cfg.installed;
   state.isDefault = cfg.isDefault;
   state.dismissedDefaultHint = cfg.dismissedDefaultHint;
+  state.sysLang = cfg.sysLang || 'en';
   applyUI();
-  renderWelcome();
+  applyLang();
 };
 
 MR.rememberScroll = () => {
@@ -196,8 +309,8 @@ MR.load = (p) => {
   $('#doc-title').title = p.path || p.name;
   $('#btn-back').disabled = !p.canBack;
   $('#btn-fwd').disabled = !p.canForward;
-  const mins = Math.max(1, Math.round(p.words / 220));
-  $('#doc-foot').textContent = `${p.words.toLocaleString()} words · ~${mins} min read`;
+  updateFooter();
+  const gen = ++renderGen;
 
   if (keepScroll) {
     scroller.scrollTop = prevTop;
@@ -209,7 +322,114 @@ MR.load = (p) => {
   }
   if (!$('#findbar').hidden && state.find.query) runFind(state.find.query, true);
   onScroll();
+  if (p.hasMath || p.hasMermaid) {
+    renderRich(gen).then(() => {
+      if (gen !== renderGen) return;
+      if (keepScroll) scroller.scrollTop = prevTop;
+      else if (p.fragment) scrollToId(p.fragment, false);
+      if (!$('#findbar').hidden && state.find.query) runFind(state.find.query, true);
+      onScroll();
+    });
+  }
 };
+
+function updateFooter() {
+  const p = state.doc;
+  if (!p) return;
+  const mins = Math.max(1, Math.round(p.words / 220));
+  $('#doc-foot').textContent = t('footer')(p.words.toLocaleString(LANG === 'he' ? 'he-IL' : 'en-US'), mins);
+}
+
+/* ── Math (KaTeX) and diagrams (Mermaid), loaded on demand ── */
+
+let renderGen = 0;
+const loaded = {};
+function loadScript(src) {
+  return (loaded[src] ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => { delete loaded[src]; reject(new Error('failed to load ' + src)); };
+    document.head.appendChild(s);
+  }));
+}
+function loadCss(href) {
+  if (loaded[href]) return;
+  loaded[href] = true;
+  const l = document.createElement('link');
+  l.rel = 'stylesheet';
+  l.href = href;
+  document.head.appendChild(l);
+}
+
+async function renderRich(gen) {
+  const jobs = [];
+  if ($('.math', docEl)) jobs.push(renderMath(gen));
+  if ($('.mermaid-block', docEl)) jobs.push(renderDiagrams(gen));
+  await Promise.allSettled(jobs);
+}
+
+async function renderMath(gen) {
+  loadCss(ORIGIN + '/vendor/katex/katex.min.css');
+  await loadScript(ORIGIN + '/vendor/katex/katex.min.js');
+  if (gen !== renderGen) return;
+  for (const el of $$('.math', docEl)) {
+    const tex = el.textContent;
+    try {
+      window.katex.render(tex, el, {
+        displayMode: el.classList.contains('math-display'),
+        throwOnError: false,
+        output: 'htmlAndMathml',
+        trust: false,
+        strict: 'ignore',
+      });
+      el.dataset.tex = tex;
+    } catch (e) {
+      el.classList.add('error');
+      el.title = String(e.message || e);
+    }
+  }
+}
+
+let mermaidTheme = null;
+async function renderDiagrams(gen = renderGen) {
+  const blocks = $$('.mermaid-block', docEl);
+  if (!blocks.length) return;
+  await loadScript(ORIGIN + '/vendor/mermaid/mermaid.min.js');
+  if (gen !== renderGen) return;
+  const theme = resolvedTheme() === 'dark' ? 'dark' : 'default';
+  if (theme !== mermaidTheme) {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme,
+      fontFamily: getComputedStyle(docEl).fontFamily,
+    });
+    mermaidTheme = theme;
+  }
+  let i = 0;
+  for (const block of blocks) {
+    const src = block.dataset.src ?? block.querySelector('.mermaid-src')?.textContent ?? '';
+    block.dataset.src = src;
+    try {
+      const { svg } = await window.mermaid.render(`mmd-${gen}-${i++}`, src);
+      if (gen !== renderGen) return;
+      block.innerHTML = svg;
+      block.classList.add('rendered');
+    } catch (e) {
+      if (gen !== renderGen) return;
+      block.classList.remove('rendered');
+      block.innerHTML = '';
+      const pre = document.createElement('pre');
+      pre.className = 'mermaid-src';
+      pre.textContent = src;
+      const err = document.createElement('p');
+      err.className = 'mermaid-error';
+      err.textContent = `${t('diagramError')} ${String(e.message || e).split('\n')[0]}`;
+      block.append(pre, err);
+    }
+  }
+}
 
 MR.home = (recent) => {
   state.doc = null;
@@ -237,7 +457,7 @@ MR.installed = (ok) => {
   state.installed = ok;
   state.registered = ok;
   renderWelcome();
-  MR.toast('Installed. Pick “Mad Reader” in the Settings window to make it the default.');
+  MR.toast(t('installedToast'));
 };
 
 MR.dragging = (on) => { $('#drop-overlay').hidden = !on; };
@@ -253,7 +473,7 @@ function enhance() {
     a.className = 'h-anchor';
     a.href = '#' + h.id;
     a.textContent = '#';
-    a.title = 'Link to this section';
+    a.title = t('linkSection');
     a.setAttribute('aria-hidden', 'true');
     h.appendChild(a);
   }
@@ -271,17 +491,19 @@ function enhance() {
     cb.closest('li')?.classList.add('task');
   }
   // Copy buttons
-  for (const pre of $$('pre', docEl)) {
+  for (const pre of $$('pre:not(.mermaid-src)', docEl)) {
     const b = document.createElement('button');
     b.className = 'copy-btn';
-    b.innerHTML = '<svg><use href="#i-copy"/></svg>Copy';
+    b.innerHTML = '<svg><use href="#i-copy"/></svg>';
+    b.append(t('copy'));
     b.addEventListener('click', async (e) => {
       e.stopPropagation();
       const code = pre.querySelector('code') || pre;
       await copyText(code.innerText);
       b.classList.add('done');
-      b.innerHTML = '<svg><use href="#i-check"/></svg>Copied';
-      setTimeout(() => { b.classList.remove('done'); b.innerHTML = '<svg><use href="#i-copy"/></svg>Copy'; }, 1400);
+      b.innerHTML = '<svg><use href="#i-check"/></svg>';
+      b.append(t('copied'));
+      setTimeout(() => { b.classList.remove('done'); b.innerHTML = '<svg><use href="#i-copy"/></svg>'; b.append(t('copy')); }, 1400);
     });
     pre.appendChild(b);
   }
@@ -307,7 +529,11 @@ function buildToc() {
   headings = $$('h1[id],h2[id],h3[id],h4[id]', docEl);
   tocEl.innerHTML = '';
   if (!headings.length) {
-    tocEl.innerHTML = '<div class="empty">No headings</div>';
+    tocEl.innerHTML = '';
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = t('noHeadings');
+    tocEl.appendChild(d);
     return;
   }
   const minLevel = Math.min(...headings.map((h) => +h.tagName[1]));
@@ -446,7 +672,7 @@ function runFind(query, keepPos) {
   $('#findbar').classList.remove('nomatch');
   if (!q) { $('#find-count').textContent = ''; return; }
   const walker = document.createTreeWalker(docEl, NodeFilter.SHOW_TEXT, {
-    acceptNode: (n) => (n.parentElement.closest('.copy-btn,.h-anchor') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    acceptNode: (n) => (n.parentElement.closest('.copy-btn,.h-anchor,.katex,.mermaid-block') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
   });
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -547,8 +773,9 @@ function renderWelcome() {
   $('#recent-wrap').hidden = !state.recent.length;
   for (const r of state.recent) {
     const li = document.createElement('li');
-    if (!r.exists) { li.classList.add('missing'); li.title = 'File not found'; }
-    li.innerHTML = '<svg class="r-icon"><use href="#i-file"/></svg><div class="r-text"><span class="r-name"></span><span class="r-dir"></span></div><button class="tb sm r-x" title="Remove from list"><svg><use href="#i-x"/></svg></button>';
+    if (!r.exists) { li.classList.add('missing'); li.title = t('fileMissing'); }
+    li.innerHTML = '<svg class="r-icon"><use href="#i-file"/></svg><div class="r-text"><span class="r-name"></span><span class="r-dir"></span></div><button class="tb sm r-x"><svg><use href="#i-x"/></svg></button>';
+    $('.r-x', li).title = t('removeRecent');
     $('.r-name', li).textContent = r.name;
     $('.r-dir', li).textContent = r.dir;
     li.addEventListener('click', (e) => {
@@ -585,13 +812,13 @@ function cycleDirection() {
   const order = ['auto', 'rtl', 'ltr'];
   const next = order[(order.indexOf(state.ui.direction) + 1) % order.length];
   setUI({ direction: next }, { redirection: true });
-  MR.toast(next === 'auto' ? 'Direction: automatic per paragraph' : next === 'rtl' ? 'Direction: right-to-left (ימין לשמאל)' : 'Direction: left-to-right');
+  MR.toast(t('dirToast')[next]);
 }
 function cycleTheme() {
   const order = ['system', 'light', 'sepia', 'dark'];
   const next = order[(order.indexOf(state.ui.theme) + 1) % order.length];
   setUI({ theme: next });
-  MR.toast('Theme: ' + (next === 'system' ? 'follow Windows' : next));
+  MR.toast(t('themeToast')[next]);
 }
 function setSize(delta) {
   const size = delta === 0 ? 17 : Math.max(11, Math.min(34, state.ui.size + delta));
@@ -644,7 +871,7 @@ $('#pop-more').addEventListener('click', (e) => {
 function action(act) {
   switch (act) {
     case 'print': if (state.doc) window.print(); break;
-    case 'copyPath': if (state.doc?.path) copyText(state.doc.path).then(() => MR.toast('Path copied')); break;
+    case 'copyPath': if (state.doc?.path) copyText(state.doc.path).then(() => MR.toast(t('pathCopied'))); break;
     case 'shortcuts': showShortcuts(); break;
     case 'about': showAbout(); break;
     default: send(act);
@@ -661,22 +888,13 @@ function closeModal() { $('#modal').hidden = true; }
 $('#modal-close').onclick = closeModal;
 $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
 
-const SHORTCUTS = [
-  ['Open file', 'Ctrl O'], ['New window', 'Ctrl N'], ['Close window', 'Ctrl W'],
-  ['Find in document', 'Ctrl F'], ['Next / previous match', 'F3 / Shift F3'],
-  ['Table of contents', 'Ctrl B'], ['Text direction: Auto → RTL → LTR', 'Ctrl D'],
-  ['Theme: Auto → Light → Sepia → Dark', 'Ctrl T'], ['Larger / smaller / reset text', 'Ctrl + / Ctrl − / Ctrl 0'],
-  ['Back / forward', 'Alt ← / Alt →'], ['Reload', 'F5 / Ctrl R'], ['Print or save as PDF', 'Ctrl P'],
-  ['Open in editor', 'Ctrl E'], ['Show in folder', 'Ctrl Shift E'], ['Full screen', 'F11'],
-  ['Home', 'Ctrl H'], ['Top / bottom', 'Home / End'], ['This list', 'F1'],
-];
 function showShortcuts() {
-  modal('<h2>Keyboard shortcuts</h2><table>' + SHORTCUTS.map(([a, k]) => `<tr><td>${a}</td><td><kbd>${k}</kbd></td></tr>`).join('') + '</table>');
+  modal(`<h2>${t('shortcutsTitle')}</h2><table>` + t('shortcuts').map(([a, k]) => `<tr><td>${a}</td><td><kbd dir="ltr">${k}</kbd></td></tr>`).join('') + '</table>');
 }
 function showAbout() {
   modal(`<div class="about"><img src="${ORIGIN}/icon.png" alt=""><h2>Mad Reader ${state.version}</h2>
-    <p>A fast, good-looking Markdown reader for Windows.<br><span dir="rtl" lang="he">קורא Markdown מהיר ויפה, עם תמיכה מלאה בעברית.</span></p>
-    <p>Built with Rust · pulldown-cmark · syntect · WebView2</p>
+    <p>${t('about')}</p>
+    <p dir="ltr">Rust · pulldown-cmark · syntect · KaTeX · Mermaid · WebView2</p>
     <p>MIT License</p></div>`);
 }
 

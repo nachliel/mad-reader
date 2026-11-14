@@ -26,6 +26,43 @@ Search ignores Hebrew vowel marks (niqqud): searching for `בראשית` also fi
 
 Older Hebrew files saved in the Windows-1255 encoding are detected and displayed correctly. UTF-8 and UTF-16 files work as you would expect.
 
+## Interface language
+
+Choose the language of the menus and buttons in **Aa → Language**:
+
+- **Auto**: follows the Windows display language
+- **English**
+- **עברית**: the whole interface switches to right-to-left
+
+## Math
+
+LaTeX math is typeset the same way as on GitHub:
+
+- Inline: `$E = mc^2$` → $E = mc^2$
+- Display: `$$...$$`, or a fenced code block with the `math` language
+
+$$
+\sum_{k=1}^{n} k = \frac{n(n+1)}{2}
+$$
+
+```math
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+```
+
+Prices like "costs $5 and $10" are not treated as math.
+
+## Diagrams (Mermaid)
+
+A fenced code block with the `mermaid` language is drawn as a diagram. Diagrams follow the light or dark theme:
+
+```mermaid
+flowchart LR
+    A[file.md] --> B(Mad Reader)
+    B --> C{Hebrew?}
+    C -->|yes| D[RTL]
+    C -->|no| E[LTR]
+```
+
 ## עברית
 
 זהו קטע לדוגמה בעברית. Mad Reader מזהה את כיוון הטקסט של כל פסקה בנפרד, כך שמסמכים מעורבים בעברית ובאנגלית נראים נכון.
@@ -69,6 +106,7 @@ Open the **Aa** menu in the toolbar to change:
 | Page width | Narrow, Normal, Wide, Full |
 | Direction | Auto, RTL, LTR |
 | Justify | Off / On |
+| Language | Auto, English, עברית |
 
 Your choices, the window size and position, and the recent-files list are remembered.
 
@@ -80,6 +118,7 @@ Everything in [CommonMark](https://commonmark.org) and GitHub-flavoured Markdown
 - Tables with alignment, task lists, footnotes[^1], definition lists
 - GitHub alerts: `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`
 - Fenced code with syntax highlighting for ~150 languages
+- LaTeX math and Mermaid diagrams
 - Front matter (YAML `---` or TOML `+++`) is hidden
 - Safe inline HTML (`<details>`, `<kbd>`, `<sup>`, `<img width>`, …). Scripts are always removed.
 

@@ -2,6 +2,7 @@
 #
 #   .\build.ps1              full build
 #   .\build.ps1 -SkipTests   skip cargo test
+#   .\build.ps1 -E2E         also run the end-to-end UI tests (needs Python + playwright)
 #
 # If target\release\mad-reader.exe is running (file locked), build elsewhere:
 #   $env:CARGO_TARGET_DIR = 'target\alt'; .\build.ps1
@@ -11,7 +12,7 @@
 #   MadReader-<ver>-portable.zip  MadReader.exe + docs
 #   MadReader.exe                 the bare executable
 
-param([switch]$SkipTests)
+param([switch]$SkipTests, [switch]$E2E)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
@@ -29,6 +30,13 @@ cargo build --release
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
 
 $targetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { 'target' }
+
+if ($E2E) {
+    Write-Host "`n> end-to-end tests" -ForegroundColor Cyan
+    python tests\e2e.py (Join-Path $targetDir 'release\mad-reader.exe')
+    if ($LASTEXITCODE -ne 0) { throw "end-to-end tests failed" }
+}
+
 $dist = Join-Path $PSScriptRoot 'dist'
 New-Item -ItemType Directory -Force $dist | Out-Null
 Copy-Item (Join-Path $targetDir 'release\mad-reader.exe') (Join-Path $dist 'MadReader.exe') -Force

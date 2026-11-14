@@ -29,25 +29,26 @@
   </defs>
 </svg>
 
+
 <header id="toolbar">
   <div class="tb-group">
-    <button class="tb" id="btn-toc" title="Contents (Ctrl+B)"><svg><use href="#i-toc"/></svg></button>
-    <button class="tb" id="btn-back" title="Back (Alt+←)" disabled><svg><use href="#i-back"/></svg></button>
-    <button class="tb" id="btn-fwd" title="Forward (Alt+→)" disabled><svg><use href="#i-fwd"/></svg></button>
-    <button class="tb" id="btn-open" title="Open file (Ctrl+O)"><svg><use href="#i-open"/></svg></button>
+    <button class="tb" id="btn-toc" data-i18n-title="tocTip"><svg><use href="#i-toc"/></svg></button>
+    <button class="tb" id="btn-back" data-i18n-title="backTip" disabled><svg><use href="#i-back"/></svg></button>
+    <button class="tb" id="btn-fwd" data-i18n-title="fwdTip" disabled><svg><use href="#i-fwd"/></svg></button>
+    <button class="tb" id="btn-open" data-i18n-title="openTip"><svg><use href="#i-open"/></svg></button>
   </div>
   <div id="doc-title" title=""><span id="doc-title-main">Mad Reader</span><span id="doc-title-file"></span></div>
   <div class="tb-group">
-    <button class="tb" id="btn-find" title="Find (Ctrl+F)"><svg><use href="#i-find"/></svg></button>
-    <button class="tb tb-text" id="btn-dir" title="Text direction (Ctrl+D)"><span id="dir-label">Auto</span></button>
-    <button class="tb" id="btn-aa" title="Appearance"><svg><use href="#i-aa"/></svg></button>
-    <button class="tb" id="btn-more" title="More"><svg><use href="#i-more"/></svg></button>
+    <button class="tb" id="btn-find" data-i18n-title="findTip"><svg><use href="#i-find"/></svg></button>
+    <button class="tb tb-text" id="btn-dir" data-i18n-title="dirTip"><span id="dir-label">Auto</span></button>
+    <button class="tb" id="btn-aa" data-i18n-title="aaTip"><svg><use href="#i-aa"/></svg></button>
+    <button class="tb" id="btn-more" data-i18n-title="moreTip"><svg><use href="#i-more"/></svg></button>
   </div>
   <div id="progress"></div>
 </header>
 
-<aside id="sidebar" aria-label="Table of contents">
-  <div class="sb-head">Contents</div>
+<aside id="sidebar">
+  <div class="sb-head" data-i18n="contents">Contents</div>
   <nav id="toc"></nav>
 </aside>
 
@@ -56,31 +57,31 @@
     <div class="wl-inner">
       <img class="wl-logo" src="http://madreader.localhost/icon.png" alt="" width="88" height="88">
       <h1 class="wl-title">Mad Reader</h1>
-      <p class="wl-tag">Markdown, beautifully. <span dir="rtl" lang="he">גם בעברית.</span></p>
+      <p class="wl-tag" data-i18n-html="tagline">Markdown, beautifully. <span dir="rtl" lang="he">גם בעברית.</span></p>
       <div class="wl-actions">
-        <button class="btn primary" id="wl-open"><svg><use href="#i-open"/></svg>Open file<kbd>Ctrl O</kbd></button>
-        <button class="btn" id="wl-guide"><svg><use href="#i-book"/></svg>User guide</button>
+        <button class="btn primary" id="wl-open"><svg><use href="#i-open"/></svg><span data-i18n="openFile">Open file</span><kbd>Ctrl O</kbd></button>
+        <button class="btn" id="wl-guide"><svg><use href="#i-book"/></svg><span data-i18n="userGuide">User guide</span></button>
       </div>
-      <p class="wl-drop">…or drop a Markdown file anywhere in this window</p>
+      <p class="wl-drop" data-i18n="dropHint">…or drop a Markdown file anywhere in this window</p>
 
       <div class="card" id="card-install" hidden>
         <div class="card-text">
-          <strong>Install Mad Reader</strong>
-          <span>Adds it to the Start menu and to “Open with” for .md files. No admin rights needed.</span>
+          <strong data-i18n="installTitle">Install Mad Reader</strong>
+          <span data-i18n="installText">Adds it to the Start menu and to “Open with” for .md files. No admin rights needed.</span>
         </div>
-        <button class="btn primary" id="btn-install">Install</button>
+        <button class="btn primary" id="btn-install" data-i18n="install">Install</button>
       </div>
       <div class="card" id="card-default" hidden>
         <div class="card-text">
-          <strong>Open .md files with Mad Reader</strong>
-          <span>Windows asks you to confirm the default app once, in Settings → Default apps.</span>
+          <strong data-i18n="defaultTitle">Open .md files with Mad Reader</strong>
+          <span data-i18n="defaultText">Windows asks you to confirm the default app once, in Settings → Default apps.</span>
         </div>
-        <button class="btn primary" id="btn-default">Set as default</button>
-        <button class="btn ghost" id="btn-dismiss" title="Don't show again"><svg><use href="#i-x"/></svg></button>
+        <button class="btn primary" id="btn-default" data-i18n="setDefault">Set as default</button>
+        <button class="btn ghost" id="btn-dismiss" data-i18n-title="dontShow"><svg><use href="#i-x"/></svg></button>
       </div>
 
       <div id="recent-wrap" hidden>
-        <div class="recent-head"><span>Recent</span><button class="link-btn" id="btn-clear-recent">Clear</button></div>
+        <div class="recent-head"><span data-i18n="recent">Recent</span><button class="link-btn" id="btn-clear-recent" data-i18n="clear">Clear</button></div>
         <ul id="recent"></ul>
       </div>
     </div>
@@ -92,81 +93,88 @@
 
 <div id="findbar" hidden>
   <svg class="fb-icon"><use href="#i-find"/></svg>
-  <input id="find-input" type="text" placeholder="Find in document" spellcheck="false" dir="auto">
+  <input id="find-input" type="text" data-i18n-ph="findPh" placeholder="Find in document" spellcheck="false" dir="auto">
   <span id="find-count"></span>
-  <button class="tb sm" id="find-prev" title="Previous (Shift+Enter)"><svg><use href="#i-up"/></svg></button>
-  <button class="tb sm" id="find-next" title="Next (Enter)"><svg><use href="#i-down"/></svg></button>
-  <button class="tb sm" id="find-close" title="Close (Esc)"><svg><use href="#i-x"/></svg></button>
+  <button class="tb sm" id="find-prev" data-i18n-title="prevTip"><svg><use href="#i-up"/></svg></button>
+  <button class="tb sm" id="find-next" data-i18n-title="nextTip"><svg><use href="#i-down"/></svg></button>
+  <button class="tb sm" id="find-close" data-i18n-title="closeTip"><svg><use href="#i-x"/></svg></button>
 </div>
 
 <div class="pop" id="pop-aa" hidden>
-  <div class="pop-row"><label>Theme</label>
+  <div class="pop-row"><label data-i18n="theme">Theme</label>
     <div class="seg" data-key="theme">
-      <button data-v="system" title="Follow Windows">Auto</button>
-      <button data-v="light"><i class="sw sw-light"></i>Light</button>
-      <button data-v="sepia"><i class="sw sw-sepia"></i>Sepia</button>
-      <button data-v="dark"><i class="sw sw-dark"></i>Dark</button>
+      <button data-v="system" data-i18n="auto" data-i18n-title="followWindows">Auto</button>
+      <button data-v="light"><i class="sw sw-light"></i><span data-i18n="light">Light</span></button>
+      <button data-v="sepia"><i class="sw sw-sepia"></i><span data-i18n="sepia">Sepia</span></button>
+      <button data-v="dark"><i class="sw sw-dark"></i><span data-i18n="dark">Dark</span></button>
     </div>
   </div>
-  <div class="pop-row"><label>Font</label>
+  <div class="pop-row"><label data-i18n="font">Font</label>
     <div class="seg" data-key="font">
-      <button data-v="sans" class="f-sans">Sans · אבג</button>
-      <button data-v="serif" class="f-serif">Serif · אבג</button>
+      <button data-v="sans" class="f-sans" data-i18n="sans">Sans · אבג</button>
+      <button data-v="serif" class="f-serif" data-i18n="serif">Serif · אבג</button>
     </div>
   </div>
-  <div class="pop-row"><label>Text size</label>
+  <div class="pop-row"><label data-i18n="textSize">Text size</label>
     <div class="stepper">
-      <button id="size-down" title="Smaller (Ctrl+−)">A−</button>
+      <button id="size-down" data-i18n-title="smallerTip">A−</button>
       <span id="size-val">17</span>
-      <button id="size-up" title="Larger (Ctrl+=)">A+</button>
+      <button id="size-up" data-i18n-title="largerTip">A+</button>
     </div>
   </div>
-  <div class="pop-row"><label>Line spacing</label>
+  <div class="pop-row"><label data-i18n="lineSpacing">Line spacing</label>
     <div class="seg" data-key="leading">
-      <button data-v="compact">Compact</button>
-      <button data-v="normal">Normal</button>
-      <button data-v="relaxed">Relaxed</button>
+      <button data-v="compact" data-i18n="compact">Compact</button>
+      <button data-v="normal" data-i18n="normal">Normal</button>
+      <button data-v="relaxed" data-i18n="relaxed">Relaxed</button>
     </div>
   </div>
-  <div class="pop-row"><label>Page width</label>
+  <div class="pop-row"><label data-i18n="pageWidth">Page width</label>
     <div class="seg" data-key="width">
-      <button data-v="narrow">Narrow</button>
-      <button data-v="normal">Normal</button>
-      <button data-v="wide">Wide</button>
-      <button data-v="full">Full</button>
+      <button data-v="narrow" data-i18n="narrow">Narrow</button>
+      <button data-v="normal" data-i18n="normal">Normal</button>
+      <button data-v="wide" data-i18n="wide">Wide</button>
+      <button data-v="full" data-i18n="full">Full</button>
     </div>
   </div>
-  <div class="pop-row"><label>Direction</label>
+  <div class="pop-row"><label data-i18n="direction">Direction</label>
     <div class="seg" data-key="direction">
-      <button data-v="auto" title="Per paragraph, from its language">Auto</button>
-      <button data-v="rtl">RTL · ימין</button>
-      <button data-v="ltr">LTR</button>
+      <button data-v="auto" data-i18n="auto" data-i18n-title="dirAutoTip">Auto</button>
+      <button data-v="rtl" data-i18n="rtl">RTL · ימין</button>
+      <button data-v="ltr" data-i18n="ltr">LTR</button>
     </div>
   </div>
-  <div class="pop-row"><label>Justify text</label>
+  <div class="pop-row"><label data-i18n="justify">Justify text</label>
     <div class="seg" data-key="justify">
-      <button data-v="off">Off</button>
-      <button data-v="on">On</button>
+      <button data-v="off" data-i18n="off">Off</button>
+      <button data-v="on" data-i18n="on">On</button>
+    </div>
+  </div>
+  <div class="pop-row"><label data-i18n="language">Language</label>
+    <div class="seg" data-key="lang">
+      <button data-v="auto" data-i18n="auto" data-i18n-title="followWindows">Auto</button>
+      <button data-v="en">English</button>
+      <button data-v="he">עברית</button>
     </div>
   </div>
 </div>
 
 <div class="pop menu" id="pop-more" hidden>
-  <button data-act="edit">Open in editor<kbd>Ctrl E</kbd></button>
-  <button data-act="reveal">Show in folder<kbd>Ctrl Shift E</kbd></button>
-  <button data-act="openWith">Open with…</button>
-  <button data-act="copyPath">Copy file path</button>
+  <button data-act="edit"><span data-i18n="mEdit">Open in editor</span><kbd>Ctrl E</kbd></button>
+  <button data-act="reveal"><span data-i18n="mReveal">Show in folder</span><kbd>Ctrl Shift E</kbd></button>
+  <button data-act="openWith"><span data-i18n="mOpenWith">Open with…</span></button>
+  <button data-act="copyPath"><span data-i18n="mCopyPath">Copy file path</span></button>
   <hr>
-  <button data-act="print">Print / Save as PDF<kbd>Ctrl P</kbd></button>
-  <button data-act="reload">Reload<kbd>F5</kbd></button>
-  <button data-act="newWindow">New window<kbd>Ctrl N</kbd></button>
-  <button data-act="fullscreen">Full screen<kbd>F11</kbd></button>
+  <button data-act="print"><span data-i18n="mPrint">Print / Save as PDF</span><kbd>Ctrl P</kbd></button>
+  <button data-act="reload"><span data-i18n="mReload">Reload</span><kbd>F5</kbd></button>
+  <button data-act="newWindow"><span data-i18n="mNewWindow">New window</span><kbd>Ctrl N</kbd></button>
+  <button data-act="fullscreen"><span data-i18n="mFullscreen">Full screen</span><kbd>F11</kbd></button>
   <hr>
-  <button data-act="home">Home<kbd>Ctrl H</kbd></button>
-  <button data-act="guide">User guide</button>
-  <button data-act="shortcuts">Keyboard shortcuts<kbd>F1</kbd></button>
-  <button data-act="defaultApps">Default app settings…</button>
-  <button data-act="about">About Mad Reader</button>
+  <button data-act="home"><span data-i18n="mHome">Home</span><kbd>Ctrl H</kbd></button>
+  <button data-act="guide"><span data-i18n="userGuide">User guide</span></button>
+  <button data-act="shortcuts"><span data-i18n="mShortcuts">Keyboard shortcuts</span><kbd>F1</kbd></button>
+  <button data-act="defaultApps"><span data-i18n="mDefaultApps">Default app settings…</span></button>
+  <button data-act="about"><span data-i18n="mAbout">About Mad Reader</span></button>
 </div>
 
 <div id="modal" hidden>
@@ -176,7 +184,7 @@
   </div>
 </div>
 
-<div id="drop-overlay" hidden><div>Drop to open</div></div>
+<div id="drop-overlay" hidden><div data-i18n="dropToOpen">Drop to open</div></div>
 <div id="linkhint" hidden></div>
 <div id="toast" hidden></div>
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 — 2026-11-14
+
+- **Math:** LaTeX via KaTeX: `$inline$`, `$$display$$` and ```` ```math ```` blocks. Prices like "$5 and $10" are left alone.
+- **Diagrams:** ```` ```mermaid ```` blocks are drawn with Mermaid and redrawn when the theme changes. Hebrew labels work.
+- **Hebrew interface:** a full Hebrew UI with a mirrored right-to-left layout, Hebrew message boxes and toasts, and a Hebrew user guide. Language: Auto (Windows) / English / עברית.
+- KaTeX and Mermaid are embedded (offline) and load only when a document needs them. Mermaid is gzip-compressed inside the exe.
+- End-to-end test suite (`tests/e2e.py`) that drives the real app through WebView2 DevTools.
+- Fix: the toolbar icon style no longer shrinks SVGs inside documents.
+- Serif font falls back to Times New Roman for Hebrew (larger and more readable than David).
+
 ## 1.0.0 — 2026-11-14
 
 First release.

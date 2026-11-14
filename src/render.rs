@@ -1,4 +1,4 @@
-﻿//! Markdown → sanitized HTML.
+//! Markdown → sanitized HTML.
 //!
 //! * GitHub-flavoured Markdown (tables, task lists, footnotes, strikethrough,
 //!   alerts, definition lists, heading attributes).
@@ -24,6 +24,10 @@ pub struct Rendered {
     /// Text of the first H1 (used for the window title), if any.
     pub title: Option<String>,
     pub words: usize,
+    /// The document contains LaTeX math (`$…$`, `$$…$$`, ```math).
+    pub has_math: bool,
+    /// The document contains ```mermaid diagrams.
+    pub has_mermaid: bool,
 }
 
 fn syntax_set() -> &'static SyntaxSet {
@@ -53,6 +57,7 @@ pub fn render(src: &str) -> Rendered {
     opts.insert(Options::ENABLE_DEFINITION_LIST);
     opts.insert(Options::ENABLE_SUPERSCRIPT);
     opts.insert(Options::ENABLE_SUBSCRIPT);
+    opts.insert(Options::ENABLE_MATH);
     // NOTE: smart punctuation is deliberately OFF: it would turn the Hebrew
     // gershayim in acronyms like צה"ל into curly quotes.
 
@@ -60,6 +65,8 @@ pub fn render(src: &str) -> Rendered {
     let mut slugs = SlugCounter::default();
     let mut title: Option<String> = None;
     let mut words = 0usize;
+    let mut has_math = false;
+    let mut has_mermaid = false;
 
     // code block state
     let mut code: Option<(String, String)> = None; // (lang, body)
@@ -79,7 +86,20 @@ pub fn render(src: &str) -> Rendered {
                 Event::Text(t) => body.push_str(&t),
                 Event::End(TagEnd::CodeBlock) => {
                     let (lang, body) = code.take().unwrap();
-                    out.push(Event::Html(highlight(&lang, &body).into()));
+                    let html = match lang.to_ascii_lowercase().as_str() {
+                        // GitHub-style ```math block → display equation (typeset by KaTeX in the UI)
+                        "math" => {
+                            has_math = true;
+                            format!("<p class=\"math-block\"><span class=\"math math-display\">{}</span></p>\n", escape_html(&body))
+                        }
+                        // ```mermaid → diagram (drawn by Mermaid in the UI; source kept as fallback)
+                        "mermaid" => {
+                            has_mermaid = true;
+                            format!("<div class=\"mermaid-block\" dir=\"ltr\"><pre class=\"mermaid-src\">{}</pre></div>\n", escape_html(&body))
+                        }
+                        _ => highlight(&lang, &body),
+                    };
+                    out.push(Event::Html(html.into()));
                 }
                 _ => {}
             }
@@ -110,6 +130,9 @@ pub fn render(src: &str) -> Rendered {
                     ));
                 }
                 ev => {
+                    if matches!(ev, Event::InlineMath(_) | Event::DisplayMath(_)) {
+                        has_math = true;
+                    }
                     if let Event::Text(t) | Event::Code(t) = &ev {
                         h.4.push_str(t);
                         words += count_words(t);
@@ -141,6 +164,10 @@ pub fn render(src: &str) -> Rendered {
                 words += count_words(t);
                 out.push(ev);
             }
+            Event::InlineMath(_) | Event::DisplayMath(_) => {
+                has_math = true;
+                out.push(ev);
+            }
             ev => out.push(ev),
         }
     }
@@ -148,7 +175,7 @@ pub fn render(src: &str) -> Rendered {
     let mut raw = String::with_capacity(src.len() * 3 / 2);
     html::push_html(&mut raw, out.into_iter());
 
-    Rendered { html: sanitizer().clean(&raw).to_string(), title, words }
+    Rendered { html: sanitizer().clean(&raw).to_string(), title, words, has_math, has_mermaid }
 }
 
 fn count_words(s: &str) -> usize {
@@ -366,6 +393,48 @@ mod tests {
         let r = render("- [x] done\n\n| a | b |\n|---|---|\n| 1 | 2 |\n");
         assert!(r.html.contains("type=\"checkbox\""));
         assert!(r.html.contains("<table>"));
+    }
+
+    #[test]
+    fn math_is_marked_for_katex() {
+        let r = render(r"Euler: $e^{i\pi}+1=0$
+
+$$\int_0^1 x\,dx$$
+
+```math
+a^2+b^2=c^2
+```
+");
+        assert!(r.has_math);
+        assert!(r.html.contains("class=\"math math-inline\""), "{}", r.html);
+        assert!(r.html.contains("class=\"math math-display\""), "{}", r.html);
+        assert!(r.html.contains("a^2+b^2=c^2"));
+    }
+
+    #[test]
+    fn prices_are_not_math() {
+        let r = render("It costs $5 and $10 today.");
+        assert!(!r.has_math, "{}", r.html);
+    }
+
+    #[test]
+    fn mermaid_block_kept_as_source() {
+        let r = render("```mermaid
+graph TD; A-->B
+```
+");
+        assert!(r.has_mermaid);
+        assert!(r.html.contains("mermaid-src"));
+        assert!(r.html.contains("A--&gt;B"), "{}", r.html);
+    }
+
+    #[test]
+    fn mermaid_cannot_smuggle_html() {
+        let r = render("```mermaid
+<img src=x onerror=alert(1)>
+```
+");
+        assert!(!r.html.contains("<img"));
     }
 
     #[test]

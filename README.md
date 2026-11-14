@@ -16,6 +16,8 @@ Mad Reader opens `.md` files fast (a single 4 MB exe that starts in well under a
 - **Legacy encodings.** UTF-8, UTF-16, and old Windows-1255 Hebrew files all display correctly.
 - **GitHub-flavoured Markdown.** Tables, task lists, footnotes, alerts (`> [!NOTE]`), definition lists, strikethrough, super/subscript, safe inline HTML (`<details>`, `<kbd>`, …). Front matter is hidden.
 - **Syntax highlighting** for about 150 languages, with a copy button on every code block.
+- **Math and diagrams.** LaTeX math (`$…$`, `$$…$$`, ```` ```math ````) is typeset with KaTeX, and ```` ```mermaid ```` blocks are drawn as diagrams that follow the light or dark theme. Both work offline and load only when a document uses them.
+- **Hebrew interface.** Menus, buttons, dialogs and the user guide are available in Hebrew, with the whole interface mirrored right-to-left. The language follows Windows by default, or you can pick it in **Aa → Language**.
 - **Live reload.** Edit the file in any editor and the view refreshes on save, keeping your place.
 - **Comfortable reading.** Light, Sepia and Dark themes (or follow Windows), Sans or Serif, text size, line spacing, page width and justification. All of it is remembered.
 - **Navigation.** A table-of-contents sidebar that tracks where you are, links between Markdown files, back and forward history, a recent-files list, drag and drop.
@@ -29,8 +31,8 @@ Download one of these from `dist/` (or build it yourself, see below):
 
 | File | What it is |
 |---|---|
-| `MadReader-1.0.0-setup.exe` | Installer (English / Hebrew). Per-user, no admin needed. Adds a Start-menu entry, registers `.md` files, and adds Mad Reader to *Installed apps*. |
-| `MadReader-1.0.0-portable.zip` | Just the exe. Run it anywhere. Click **Install** on its home screen to install it in place. |
+| `MadReader-1.1.0-setup.exe` | Installer (English / Hebrew). Per-user, no admin needed. Adds a Start-menu entry, registers `.md` files, and adds Mad Reader to *Installed apps*. |
+| `MadReader-1.1.0-portable.zip` | Just the exe. Run it anywhere. Click **Install** on its home screen to install it in place. |
 
 **Requirements:** Windows 10 or 11 (x64). The Microsoft Edge WebView2 Runtime is needed and already ships with Windows 11 and up-to-date Windows 10.
 
@@ -90,24 +92,35 @@ Uninstalling (from *Settings → Apps → Installed apps*) removes all of the ab
 Prerequisites: [Rust](https://rustup.rs) (MSVC toolchain), the Windows SDK (comes with the Visual Studio Build Tools), and optionally [Inno Setup 6](https://jrsoftware.org/isinfo.php) for the installer (`winget install JRSoftware.InnoSetup`).
 
 ```powershell
-.\build.ps1          # tests + release exe + portable zip + installer → .\dist\
-cargo run -- README.md   # run a debug build (devtools enabled: right-click → Inspect)
-cargo test
+.\build.ps1             # unit tests + release exe + portable zip + installer → .\dist\
+.\build.ps1 -E2E        # …plus the end-to-end UI tests
+cargo run -- README.md  # run a debug build (devtools enabled: right-click → Inspect)
+cargo test              # unit tests
 ```
 
-To regenerate the icons: `python tools/make_icons.py` (needs Pillow).
+- Regenerate the icons: `python tools/make_icons.py` (needs Pillow).
+- Update the bundled KaTeX / Mermaid: `.\tools\update_vendor.ps1` (needs npm).
+
+### Testing
+
+`cargo test` covers the Markdown pipeline: Hebrew slugs, sanitizing, math and Mermaid detection, encodings and paths.
+
+`python tests\e2e.py` runs the end-to-end suite (about 50 checks) against the real exe. It starts Mad Reader with throw-away settings folders, attaches [Playwright](https://playwright.dev/python/) to WebView2's DevTools port (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`), and drives the app with the keyboard and mouse. It covers per-paragraph direction, math, diagrams, images, niqqud-insensitive search, links and history, themes, the Hebrew interface, live reload, recent files, the guide and saved settings. Pass `--out DIR` to keep the screenshots. It needs `pip install playwright` but no browser download, because it uses the WebView2 that ships with Windows.
+
 
 ### How it works
 
 ```
  file.md ──► Rust: decode (UTF-8/16/1255) ──► pulldown-cmark (GFM) ──► heading slugs
-                                              └─► syntect (code highlighting)
+                                              ├─► syntect (code highlighting)
+                                              └─► math / mermaid blocks marked for the UI
                                                        │
                                                ammonia (sanitize)
                                                        │  JSON via evaluate_script
                                                        ▼
             WebView2 (wry/tao) ◄── embedded UI shell (assets/ui: HTML/CSS/JS)
-              • per-block bidi detection, TOC, find, themes, shortcuts
+              • per-block bidi detection, TOC, find, themes, shortcuts, EN/HE UI
+              • KaTeX + Mermaid (embedded, loaded on demand from /vendor/)
               • local images served via http://madreader.localhost/doc/<path>
               • links/keys → IPC → Rust (open file, history, shell actions)
 ```
@@ -118,11 +131,16 @@ To regenerate the icons: `python tools/make_icons.py` (needs Pillow).
 | `src/render.rs` | Markdown → sanitized HTML, slugs, syntax highlighting |
 | `src/install.rs` | Per-user install / uninstall, file associations, Default Apps |
 | `src/settings.rs` | JSON settings |
+| `src/i18n.rs` | Interface language for Rust-side messages |
 | `assets/ui/` | The reader UI (embedded into the exe at compile time) |
-| `docs/guide.md` | In-app user guide (embedded) |
+| `docs/guide.md`, `docs/guide.he.md` | In-app user guide, English and Hebrew (embedded) |
+| `assets/vendor/` | KaTeX and Mermaid (embedded; Mermaid gzip-compressed by `build.rs`) |
+| `tests/e2e.py`, `tests/fixtures/` | End-to-end UI tests |
 | `installer/MadReader.iss` | Inno Setup script |
 | `build.rs` | Embeds icons, manifest and version info |
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Bundled third-party software: [KaTeX](https://katex.org) (MIT) and [Mermaid](https://mermaid.js.org) (MIT). Their licenses are in `assets/vendor/*/LICENSE`.

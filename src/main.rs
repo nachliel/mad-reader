@@ -9,6 +9,7 @@
 
 #![windows_subsystem = "windows"]
 
+mod i18n;
 mod install;
 mod render;
 mod settings;
@@ -28,6 +29,7 @@ use tao::window::{Fullscreen, Icon, Theme, Window, WindowBuilder};
 use wry::http::{Request, Response, header};
 use wry::{DragDropEvent, NewWindowResponse, ScrollBarStyle, WebContext, WebView, WebViewBuilder, WebViewBuilderExtWindows};
 
+use i18n::tr;
 use settings::Settings;
 
 const ORIGIN: &str = "http://madreader.localhost";
@@ -39,6 +41,10 @@ const APP_CSS: &str = include_str!("../assets/ui/app.css");
 const APP_JS: &str = include_str!("../assets/ui/app.js");
 const ICON_PNG: &[u8] = include_bytes!("../assets/app-256.png");
 const GUIDE_MD: &str = include_str!("../docs/guide.md");
+const GUIDE_HE_MD: &str = include_str!("../docs/guide.he.md");
+
+// KaTeX + Mermaid, embedded by build.rs (large files gzip-compressed).
+include!(concat!(env!("OUT_DIR"), "/vendor.rs"));
 
 /// Characters escaped in each path segment of a `/doc/` URL.
 const SEGMENT: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'_').remove(b'.').remove(b'~').remove(b':');
@@ -68,6 +74,7 @@ struct Watched {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let quiet = args.iter().any(|a| a == "--quiet" || a == "/S" || a == "/quiet");
+    i18n::set_from_setting(Settings::load().ui_str("lang"));
 
     match args.first().map(String::as_str) {
         Some("--install") => {
@@ -75,10 +82,16 @@ fn main() {
                 Ok(exe) => {
                     if !quiet {
                         let launch = ask(
-                            "Mad Reader installed",
-                            &format!(
-                                "Mad Reader {VERSION} was installed to:\n{}\n\nIt is in your Start menu and in \"Open with\" for Markdown files.\n\nTo open .md files with it by double-click, choose Mad Reader in Settings → Default apps (will open now).\n\nLaunch Mad Reader now?",
-                                exe.display()
+                            &tr("Mad Reader installed", "Mad Reader הותקן"),
+                            &tr(
+                                format!(
+                                    "Mad Reader {VERSION} was installed to:\n{}\n\nIt is in your Start menu and in \"Open with\" for Markdown files.\n\nTo open .md files with it by double-click, choose Mad Reader in Settings → Default apps (will open now).\n\nLaunch Mad Reader now?",
+                                    exe.display()
+                                ),
+                                format!(
+                                    "Mad Reader {VERSION} הותקן בתיקייה:\n{}\n\nהוא נמצא בתפריט התחל וברשימת \"פתח באמצעות\" של קובצי Markdown.\n\nכדי לפתוח קובצי ‎.md בלחיצה כפולה, בחרו ב-Mad Reader בהגדרות ← אפליקציות ברירת מחדל (ייפתח עכשיו).\n\nלהפעיל את Mad Reader עכשיו?",
+                                    exe.display()
+                                ),
                             ),
                         );
                         install::open_default_apps();
@@ -87,16 +100,24 @@ fn main() {
                         }
                     }
                 }
-                Err(e) => error_box(&format!("Installation failed:\n{e}")),
+                Err(e) => error_box(&tr(format!("Installation failed:\n{e}"), format!("ההתקנה נכשלה:\n{e}"))),
             }
             return;
         }
         Some("--uninstall") => {
-            if quiet || ask("Uninstall Mad Reader", "Remove Mad Reader, its file associations and its settings?") {
+            if quiet
+                || ask(
+                    &tr("Uninstall Mad Reader", "הסרת Mad Reader"),
+                    &tr(
+                        "Remove Mad Reader, its file associations and its settings?",
+                        "להסיר את Mad Reader, את שיוך סוגי הקבצים ואת ההגדרות שלו?",
+                    ),
+                )
+            {
                 match install::uninstall() {
-                    Ok(()) if !quiet => info_box("Mad Reader", "Mad Reader was uninstalled."),
+                    Ok(()) if !quiet => info_box("Mad Reader", &tr("Mad Reader was uninstalled.", "Mad Reader הוסר.")),
                     Ok(()) => {}
-                    Err(e) => error_box(&format!("Uninstall failed:\n{e}")),
+                    Err(e) => error_box(&tr(format!("Uninstall failed:\n{e}"), format!("ההסרה נכשלה:\n{e}"))),
                 }
             }
             return;
@@ -104,7 +125,7 @@ fn main() {
         Some("--register") => {
             if let Err(e) = std::env::current_exe().and_then(|exe| install::register(&exe)) {
                 if !quiet {
-                    error_box(&format!("Registration failed:\n{e}"));
+                    error_box(&tr(format!("Registration failed:\n{e}"), format!("הרישום נכשל:\n{e}")));
                 }
             }
             return;
@@ -139,9 +160,15 @@ fn main() {
 
     let file = args.iter().find(|a| !a.starts_with("--")).map(|a| absolute(Path::new(a)));
     if let Err(e) = run(file) {
-        error_box(&format!(
-            "Mad Reader could not start:\n{e}\n\nMad Reader needs the Microsoft Edge WebView2 Runtime, which ships with Windows 10/11. \
-             If it is missing, install it from https://developer.microsoft.com/microsoft-edge/webview2/"
+        error_box(&tr(
+            format!(
+                "Mad Reader could not start:\n{e}\n\nMad Reader needs the Microsoft Edge WebView2 Runtime, which ships with Windows 10/11. \
+                 If it is missing, install it from https://developer.microsoft.com/microsoft-edge/webview2/"
+            ),
+            format!(
+                "לא ניתן להפעיל את Mad Reader:\n{e}\n\nנדרש רכיב Microsoft Edge WebView2 Runtime, שמגיע עם Windows 10/11. \
+                 אם הוא חסר, אפשר להתקין אותו מ-https://developer.microsoft.com/microsoft-edge/webview2/"
+            ),
         ));
     }
 }
@@ -318,6 +345,7 @@ impl App {
                 self.ready = true;
                 let init = json!({
                     "version": VERSION,
+                    "sysLang": i18n::system_lang(),
                     "ui": self.settings.ui,
                     "recent": self.recent_existing(),
                     "registered": install::is_registered(),
@@ -372,7 +400,12 @@ impl App {
             }
             "ui" => {
                 if let Some(ui) = v.get("ui") {
+                    let lang_changed = ui.get("lang") != self.settings.ui.get("lang");
                     self.settings.ui = ui.clone();
+                    i18n::set_from_setting(self.settings.ui_str("lang"));
+                    if lang_changed && self.current == Some(Doc::Guide) {
+                        self.open(Doc::Guide, None, false, true);
+                    }
                     let ui = ui.clone();
                     update_settings(|st| st.ui = ui);
                 }
@@ -386,7 +419,7 @@ impl App {
                     self.js("MR.installed(true)");
                     install::open_default_apps();
                 }
-                Err(e) => self.toast(&format!("Install failed: {e}")),
+                Err(e) => self.toast(&tr(format!("Install failed: {e}"), format!("ההתקנה נכשלה: {e}"))),
             },
             "register" => {
                 let ok = std::env::current_exe().and_then(|exe| install::register(&exe)).is_ok();
@@ -454,7 +487,7 @@ impl App {
             return;
         }
         let (text, path) = match &doc {
-            Doc::Guide => (GUIDE_MD.to_string(), None),
+            Doc::Guide => ((if i18n::is_hebrew() { GUIDE_HE_MD } else { GUIDE_MD }).to_string(), None),
             Doc::File(p) => {
                 let p = absolute(p);
                 if p.is_dir() {
@@ -465,7 +498,7 @@ impl App {
                     Ok(t) => (t, Some(p)),
                     Err(e) => {
                         if !is_reload {
-                            self.toast(&format!("Can't open {}: {e}", p.display()));
+                            self.toast(&tr(format!("Can't open {}: {e}", p.display()), format!("לא ניתן לפתוח את {}: {e}", p.display())));
                         }
                         return;
                     }
@@ -489,7 +522,7 @@ impl App {
                 let url = file_url(p);
                 (name, dir, base, url)
             }
-            None => ("User guide".to_string(), String::new(), format!("{ORIGIN}/"), format!("{ORIGIN}/guide")),
+            None => (tr("User guide", "מדריך למשתמש"), String::new(), format!("{ORIGIN}/"), format!("{ORIGIN}/guide")),
         };
 
         let navigating = self.current.as_ref() != Some(&doc);
@@ -521,6 +554,8 @@ impl App {
             "html": r.html,
             "title": r.title,
             "words": r.words,
+            "hasMath": r.has_math,
+            "hasMermaid": r.has_mermaid,
             "bytes": text.len(),
             "renderMs": (render_ms * 10.0).round() / 10.0,
             "fragment": fragment,
@@ -572,7 +607,7 @@ impl App {
         } else if path.exists() {
             shell_open(&path.to_string_lossy());
         } else {
-            self.toast(&format!("Not found: {}", path.display()));
+            self.toast(&tr(format!("Not found: {}", path.display()), format!("לא נמצא: {}", path.display())));
         }
     }
 
@@ -687,6 +722,10 @@ fn protocol(req: Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {
         "/app.js" => (Cow::Borrowed(APP_JS.as_bytes()), "text/javascript; charset=utf-8"),
         "/highlight.css" => (Cow::Borrowed(render::highlight_css().as_bytes()), "text/css; charset=utf-8"),
         "/icon.png" => (Cow::Borrowed(ICON_PNG), "image/png"),
+        p if p.starts_with("/vendor/") => match vendor_file(&p[8..]) {
+            Some(found) => found,
+            None => return not_found(),
+        },
         p if p.starts_with("/doc/") => {
             let decoded = percent_decode_str(&p[5..]).decode_utf8_lossy().replace('/', "\\");
             let file = PathBuf::from(decoded);
@@ -713,6 +752,25 @@ fn protocol(req: Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {
         );
     }
     b.body(body).unwrap()
+}
+
+/// Look up an embedded vendor file, inflating gzip-compressed ones.
+fn vendor_file(path: &str) -> Option<(Cow<'static, [u8]>, &'static str)> {
+    let (_, bytes, gz) = VENDOR.iter().find(|(p, _, _)| *p == path)?;
+    let mime = match path.rsplit('.').next().unwrap_or("") {
+        "js" => "text/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "woff2" => "font/woff2",
+        _ => "application/octet-stream",
+    };
+    if *gz {
+        use std::io::Read;
+        let mut out = Vec::with_capacity(bytes.len() * 4);
+        flate2::read::GzDecoder::new(*bytes).read_to_end(&mut out).ok()?;
+        Some((Cow::Owned(out), mime))
+    } else {
+        Some((Cow::Borrowed(*bytes), mime))
+    }
 }
 
 fn not_found() -> Response<Cow<'static, [u8]>> {
@@ -862,7 +920,9 @@ fn spawn_self(file: Option<&Path>) {
 
 fn message_box(title: &str, text: &str, flags: u32) -> i32 {
     use windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MB_RIGHT, MB_RTLREADING};
     let (t, m) = (wide(title), wide(text));
+    let flags = if i18n::is_hebrew() { flags | MB_RTLREADING | MB_RIGHT } else { flags };
     unsafe { MessageBoxW(std::ptr::null_mut(), m.as_ptr(), t.as_ptr(), flags) }
 }
 
