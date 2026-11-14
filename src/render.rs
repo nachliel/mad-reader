@@ -28,6 +28,8 @@ pub struct Rendered {
     pub has_math: bool,
     /// The document contains ```mermaid diagrams.
     pub has_mermaid: bool,
+    /// The document contains ```dot / ```graphviz graphs.
+    pub has_graphviz: bool,
 }
 
 fn syntax_set() -> &'static SyntaxSet {
@@ -67,6 +69,7 @@ pub fn render(src: &str) -> Rendered {
     let mut words = 0usize;
     let mut has_math = false;
     let mut has_mermaid = false;
+    let mut has_graphviz = false;
 
     // code block state
     let mut code: Option<(String, String)> = None; // (lang, body)
@@ -96,6 +99,12 @@ pub fn render(src: &str) -> Rendered {
                         "mermaid" => {
                             has_mermaid = true;
                             format!("<div class=\"mermaid-block\" dir=\"ltr\"><pre class=\"mermaid-src\">{}</pre></div>\n", escape_html(&body))
+                        }
+                        // ```dot / ```graphviz → graph (laid out by Graphviz / Viz.js in the UI)
+                        "dot" | "graphviz" | "gv" => {
+                            has_graphviz = true;
+                            format!("<div class=\"graphviz-block\" dir=\"ltr\"><pre class=\"graphviz-src\">{}</pre></div>
+", escape_html(&body))
                         }
                         _ => highlight(&lang, &body),
                     };
@@ -175,7 +184,7 @@ pub fn render(src: &str) -> Rendered {
     let mut raw = String::with_capacity(src.len() * 3 / 2);
     html::push_html(&mut raw, out.into_iter());
 
-    Rendered { html: sanitizer().clean(&raw).to_string(), title, words, has_math, has_mermaid }
+    Rendered { html: sanitizer().clean(&raw).to_string(), title, words, has_math, has_mermaid, has_graphviz }
 }
 
 fn count_words(s: &str) -> usize {
@@ -426,6 +435,21 @@ graph TD; A-->B
         assert!(r.has_mermaid);
         assert!(r.html.contains("mermaid-src"));
         assert!(r.html.contains("A--&gt;B"), "{}", r.html);
+    }
+
+    #[test]
+    fn graphviz_block_kept_as_source() {
+        let r = render("```dot
+digraph { \"שלום\" -> b }
+```
+");
+        assert!(r.has_graphviz && !r.has_mermaid);
+        assert!(r.html.contains("class=\"graphviz-src\""), "{}", r.html);
+        assert!(r.html.contains("-&gt; b"), "{}", r.html);
+        assert!(!render("```rust
+fn main() {}
+```
+").has_graphviz);
     }
 
     #[test]

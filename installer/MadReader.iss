@@ -71,6 +71,20 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 Filename: "{app}\{#AppExe}"; Parameters: "--register --quiet"; Flags: runhidden waituntilterminated
 Filename: "{app}\{#AppExe}"; Parameters: "--default-apps"; Description: "{cm:DefaultApp}"; Flags: postinstall nowait skipifsilent
 Filename: "{app}\{#AppExe}"; Description: "{cm:Launch}"; Flags: postinstall nowait skipifsilent
+; In-app update: the app runs this setup with /SILENT /RELAUNCH=1 and exits.
+; Start it again afterwards (it reopens the document that was open).
+Filename: "{app}\{#AppExe}"; Parameters: "--updated"; Flags: nowait; Check: IsRelaunch
+
+[Registry]
+; A copy installed with "MadReader.exe --install" has its own entry in
+; Installed apps. This setup's entry replaces it (same folder, same shortcut).
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\MadReader"; Flags: deletekey
+
+[Code]
+function IsRelaunch: Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
 
 [UninstallRun]
 Filename: "{app}\{#AppExe}"; Parameters: "--unregister"; Flags: runhidden waituntilterminated; RunOnceId: "Unregister"

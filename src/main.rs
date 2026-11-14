@@ -13,6 +13,7 @@ mod i18n;
 mod install;
 mod render;
 mod settings;
+mod update;
 
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
@@ -57,6 +58,9 @@ enum UserEvent {
     Dragging(bool),
     FileChanged,
     Show,
+    UpdateChecked { result: Result<Option<update::Release>, String>, manual: bool },
+    UpdateProgress(f64),
+    UpdateDownloaded(Result<PathBuf, String>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -151,15 +155,27 @@ fn main() {
                  MadReader.exe --register         register file associations for this exe\n\
                  MadReader.exe --unregister       remove file associations\n\
                  MadReader.exe --default-apps     open Settings → Default apps\n\
-                 MadReader.exe --version",
+                 MadReader.exe --version\n\n\
+                 Set MADREADER_NO_UPDATE_CHECK=1 to turn off the background update check.",
             );
             return;
         }
         _ => {}
     }
 
-    let file = args.iter().find(|a| !a.starts_with("--")).map(|a| absolute(Path::new(a)));
-    if let Err(e) = run(file) {
+    let mut file = args.iter().find(|a| !a.starts_with("--")).map(|a| absolute(Path::new(a)));
+    // Started by the setup program after an update: reopen what was open before.
+    let updated = args.iter().any(|a| a == "--updated");
+    if updated {
+        let mut st = Settings::load();
+        if let Some(r) = st.resume.take() {
+            st.save();
+            if file.is_none() && Path::new(&r).is_file() {
+                file = Some(PathBuf::from(r));
+            }
+        }
+    }
+    if let Err(e) = run(file, updated) {
         error_box(&tr(
             format!(
                 "Mad Reader could not start:\n{e}\n\nMad Reader needs the Microsoft Edge WebView2 Runtime, which ships with Windows 10/11. \
@@ -173,7 +189,7 @@ fn main() {
     }
 }
 
-fn run(initial: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+fn run(initial: Option<PathBuf>, just_updated: bool) -> Result<(), Box<dyn std::error::Error>> {
     render::prewarm();
 
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
@@ -281,6 +297,9 @@ fn run(initial: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
         ready: false,
         shown: false,
         proxy,
+        just_updated,
+        update: None,
+        updating: false,
     };
 
     event_loop.run(move |event, _, control_flow| {
@@ -310,6 +329,12 @@ struct App {
     ready: bool,
     shown: bool,
     proxy: EventLoopProxy<UserEvent>,
+    /// Started by the setup program right after an update.
+    just_updated: bool,
+    /// Newer release found by the last check.
+    update: Option<update::Release>,
+    /// The update is downloading.
+    updating: bool,
 }
 
 impl App {
@@ -334,7 +359,115 @@ impl App {
                 }
             }
             UserEvent::Show => self.show(),
+            UserEvent::UpdateChecked { result, manual } => self.on_update_checked(result, manual),
+            UserEvent::UpdateProgress(f) => {
+                self.js(&format!("MR.update({})", json!({ "state": "downloading", "progress": f })));
+            }
+            UserEvent::UpdateDownloaded(Ok(setup)) => {
+                // Remember the open document; the setup restarts us with --updated.
+                let resume = match &self.current {
+                    Some(Doc::File(p)) => Some(p.to_string_lossy().to_string()),
+                    _ => None,
+                };
+                update_settings(move |st| st.resume = resume);
+                self.save_window_state();
+                match update::run_installer(&setup) {
+                    Ok(()) => *control_flow = ControlFlow::Exit,
+                    Err(e) => {
+                        self.updating = false;
+                        update_settings(|st| st.resume = None);
+                        self.update_error(&e.to_string());
+                    }
+                }
+            }
+            UserEvent::UpdateDownloaded(Err(e)) => {
+                self.updating = false;
+                self.update_error(&e);
+            }
         }
+    }
+
+    fn on_update_checked(&mut self, result: Result<Option<update::Release>, String>, manual: bool) {
+        match result {
+            Ok(Some(r)) => {
+                if !manual && self.settings.updates.skipped == r.version {
+                    return;
+                }
+                let info = json!({
+                    "state": "available",
+                    "version": r.version,
+                    "current": VERSION,
+                    "notes": render::render(&r.notes).html,
+                    "manual": manual,
+                    "canInstall": r.setup.is_some() && install::running_from_install_dir(),
+                });
+                self.update = Some(r);
+                self.js(&format!("MR.update({info})"));
+            }
+            Ok(None) if manual => {
+                self.js(&format!("MR.update({})", json!({ "state": "latest", "current": VERSION })));
+            }
+            Err(e) if manual => self.update_error(&e),
+            _ => {}
+        }
+    }
+
+    fn update_error(&self, msg: &str) {
+        self.js(&format!("MR.update({})", json!({ "state": "error", "message": msg })));
+    }
+
+    /// Background check, at most about once a day (shared by all windows).
+    fn maybe_auto_check(&mut self) {
+        const INTERVAL: u64 = 20 * 3600;
+        if self.settings.updates.disabled || std::env::var_os("MADREADER_NO_UPDATE_CHECK").is_some() {
+            return;
+        }
+        let now = unix_now();
+        if now.saturating_sub(Settings::load().updates.last_check) < INTERVAL {
+            return;
+        }
+        self.settings.updates.last_check = now;
+        update_settings(move |st| st.updates.last_check = now);
+        self.start_check(false, Duration::from_secs(4));
+    }
+
+    fn start_check(&self, manual: bool, delay: Duration) {
+        let proxy = self.proxy.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(delay);
+            let result = update::check();
+            let _ = proxy.send_event(UserEvent::UpdateChecked { result, manual });
+        });
+    }
+
+    fn install_update(&mut self) {
+        let Some(r) = self.update.clone() else { return };
+        let asset = match (&r.setup, install::running_from_install_dir()) {
+            (Some(a), true) => a.clone(),
+            // Portable copy (or no setup in the release): let the user download it.
+            _ => {
+                shell_open(&r.page);
+                return;
+            }
+        };
+        if self.updating {
+            return;
+        }
+        self.updating = true;
+        self.js(&format!("MR.update({})", json!({ "state": "downloading", "progress": 0.0 })));
+        let proxy = self.proxy.clone();
+        std::thread::spawn(move || {
+            let mut last = -1i32;
+            let p2 = proxy.clone();
+            let result = update::download(&asset, &mut |f| {
+                let pct = (f * 100.0) as i32;
+                if pct != last {
+                    last = pct;
+                    let _ = p2.send_event(UserEvent::UpdateProgress(f));
+                }
+            });
+            let _ = proxy.send_event(UserEvent::UpdateDownloaded(result));
+        });
     }
 
     fn on_ipc(&mut self, msg: &str, control_flow: &mut ControlFlow) {
@@ -352,12 +485,39 @@ impl App {
                     "installed": install::running_from_install_dir(),
                     "isDefault": install::is_default(),
                     "dismissedDefaultHint": self.settings.dismissed_default_hint,
+                    "autoUpdate": !self.settings.updates.disabled,
                 });
                 self.js(&format!("MR.init({init})"));
                 if let Some(doc) = self.pending.take().or_else(|| self.current.clone()) {
                     self.open(doc, None, true, false);
                 }
                 self.show();
+                if self.just_updated {
+                    self.just_updated = false;
+                    self.toast(&tr(format!("Mad Reader was updated to {VERSION}."), format!("Mad Reader עודכן לגרסה {VERSION}.")));
+                }
+                self.maybe_auto_check();
+            }
+            "checkUpdate" => {
+                self.js(&format!("MR.update({})", json!({ "state": "checking" })));
+                self.start_check(true, Duration::ZERO);
+            }
+            "installUpdate" => self.install_update(),
+            "skipUpdate" => {
+                if let Some(r) = self.update.take() {
+                    let v = r.version.clone();
+                    self.settings.updates.skipped = v.clone();
+                    update_settings(move |st| st.updates.skipped = v);
+                }
+            }
+            "releasePage" => {
+                let page = self.update.as_ref().map(|r| r.page.clone()).unwrap_or_else(update::releases_page);
+                shell_open(&page);
+            }
+            "autoUpdate" => {
+                let on = v.get("on").and_then(Value::as_bool).unwrap_or(true);
+                self.settings.updates.disabled = !on;
+                update_settings(move |st| st.updates.disabled = !on);
             }
             "open" => {
                 let mut dlg = rfd::FileDialog::new()
@@ -556,6 +716,7 @@ impl App {
             "words": r.words,
             "hasMath": r.has_math,
             "hasMermaid": r.has_mermaid,
+            "hasGraphviz": r.has_graphviz,
             "bytes": text.len(),
             "renderMs": (render_ms * 10.0).round() / 10.0,
             "fragment": fragment,
@@ -706,6 +867,10 @@ fn spawn_watcher(watched: Arc<Mutex<Watched>>, proxy: EventLoopProxy<UserEvent>)
     });
 }
 
+fn unix_now() -> u64 {
+    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
 fn file_stamp(p: &Path) -> Option<(SystemTime, u64)> {
     let m = std::fs::metadata(p).ok()?;
     Some((m.modified().ok()?, m.len()))
@@ -746,7 +911,7 @@ fn protocol(req: Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {
     if path == "/" || path == "/index.html" {
         b = b.header(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; \
+            "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; \
              img-src * data: blob:; media-src *; font-src 'self' data:; connect-src 'self'; \
              object-src 'none'; frame-src 'none'; base-uri 'self'",
         );

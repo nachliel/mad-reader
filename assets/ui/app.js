@@ -28,6 +28,8 @@ const state = {
   dismissedDefaultHint: false,
   version: '',
   sysLang: 'en',
+  autoUpdate: true,
+  update: null, // { state, version, notes, canInstall, … }
   find: { hits: [], idx: -1, query: '' },
 };
 
@@ -61,6 +63,16 @@ const STRINGS = {
     themeToast: { system: 'Theme: follow Windows', light: 'Theme: light', sepia: 'Theme: sepia', dark: 'Theme: dark' },
     pathCopied: 'Path copied', installedToast: 'Installed. Pick “Mad Reader” in the Settings window to make it the default.',
     diagramError: 'Could not draw this diagram:',
+    mCheckUpdate: 'Check for updates…', mUpdateTo: (v) => `Update to ${v}…`,
+    ucTitle: (v) => `Mad Reader ${v}`, ucText: 'A new version is ready.', whatsNew: "What's new", updateNow: 'Update', later: 'Later',
+    updTitle: (v) => `Mad Reader ${v} is available`, updCurrent: (v) => `You have version ${v}.`,
+    updInstall: 'Update now', updDownload: 'Download…', updSkip: 'Skip this version', updLater: 'Later',
+    updPortable: 'This copy is not installed, so the download page will open.',
+    updNoNotes: 'No release notes.',
+    updChecking: 'Checking for updates…', updLatest: (v) => `You have the latest version (${v}).`,
+    updDownloading: 'Downloading the update…', updRestart: 'Mad Reader will close, update and open again.',
+    updError: 'Could not update', updRetry: 'Try again', updReleases: 'Releases page',
+    checkNow: 'Check for updates', autoCheck: 'Check for updates automatically',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcuts: [
       ['Open file', 'Ctrl O'], ['New window', 'Ctrl N'], ['Close window', 'Ctrl W'],
@@ -100,6 +112,16 @@ const STRINGS = {
     themeToast: { system: 'ערכת נושא: לפי Windows', light: 'ערכת נושא: בהירה', sepia: 'ערכת נושא: ספיה', dark: 'ערכת נושא: כהה' },
     pathCopied: 'הנתיב הועתק', installedToast: 'ההתקנה הושלמה. בחלון ההגדרות בחרו ב-Mad Reader כדי להגדיר אותו כברירת מחדל.',
     diagramError: 'לא ניתן לצייר את התרשים:',
+    mCheckUpdate: 'בדיקת עדכונים…', mUpdateTo: (v) => `עדכון לגרסה ${v}…`,
+    ucTitle: (v) => `Mad Reader ${v}`, ucText: 'גרסה חדשה מוכנה.', whatsNew: 'מה חדש', updateNow: 'עדכון', later: 'אחר כך',
+    updTitle: (v) => `גרסה ${v} של Mad Reader זמינה`, updCurrent: (v) => `הגרסה המותקנת: ${v}.`,
+    updInstall: 'עדכון עכשיו', updDownload: 'הורדה…', updSkip: 'דילוג על הגרסה הזאת', updLater: 'אחר כך',
+    updPortable: 'העותק הזה אינו מותקן, ולכן ייפתח דף ההורדה.',
+    updNoNotes: 'אין הערות גרסה.',
+    updChecking: 'בודק עדכונים…', updLatest: (v) => `מותקנת הגרסה העדכנית ביותר (${v}).`,
+    updDownloading: 'מוריד את העדכון…', updRestart: 'Mad Reader ייסגר, יתעדכן וייפתח מחדש.',
+    updError: 'העדכון נכשל', updRetry: 'ניסיון נוסף', updReleases: 'דף הגרסאות',
+    checkNow: 'בדיקת עדכונים', autoCheck: 'לבדוק עדכונים באופן אוטומטי',
     shortcutsTitle: 'קיצורי מקלדת',
     shortcuts: [
       ['פתיחת קובץ', 'Ctrl O'], ['חלון חדש', 'Ctrl N'], ['סגירת החלון', 'Ctrl W'],
@@ -134,6 +156,7 @@ function applyLang() {
     if (!headings.length) buildToc();
   }
   renderWelcome();
+  renderUpdateBadge();
 }
 
 /* ── Bidi / RTL ──────────────────────────────────────── */
@@ -152,7 +175,7 @@ function proseText(el, skipNested) {
       else if (c.nodeType === 1) {
         const t = c.tagName;
         if (t === 'CODE' || t === 'PRE' || t === 'KBD' || t === 'svg' || t === 'math') continue;
-        if (c.classList.contains('math') || c.classList.contains('mermaid-block')) continue;
+        if (c.classList.contains('math') || c.classList.contains('mermaid-block') || c.classList.contains('graphviz-block')) continue;
         if (skipNested && (t === 'UL' || t === 'OL' || t === 'TABLE' || t === 'BLOCKQUOTE')) continue;
         if (t === 'BR' || t === 'P' || t === 'LI') out += ' ';
         walk(c);
@@ -237,7 +260,7 @@ function applyUI() {
     const first = lastDark === null;
     lastDark = dark;
     send('theme', { dark });
-    if (!first && state.doc) renderDiagrams();
+    if (!first && state.doc) { renderDiagrams(); renderGraphviz(); }
   }
 }
 darkMQ.addEventListener('change', () => applyUI());
@@ -282,6 +305,7 @@ MR.init = (cfg) => {
   state.isDefault = cfg.isDefault;
   state.dismissedDefaultHint = cfg.dismissedDefaultHint;
   state.sysLang = cfg.sysLang || 'en';
+  state.autoUpdate = cfg.autoUpdate !== false;
   applyUI();
   applyLang();
 };
@@ -322,7 +346,7 @@ MR.load = (p) => {
   }
   if (!$('#findbar').hidden && state.find.query) runFind(state.find.query, true);
   onScroll();
-  if (p.hasMath || p.hasMermaid) {
+  if (p.hasMath || p.hasMermaid || p.hasGraphviz) {
     renderRich(gen).then(() => {
       if (gen !== renderGen) return;
       if (keepScroll) scroller.scrollTop = prevTop;
@@ -366,6 +390,7 @@ async function renderRich(gen) {
   const jobs = [];
   if ($('.math', docEl)) jobs.push(renderMath(gen));
   if ($('.mermaid-block', docEl)) jobs.push(renderDiagrams(gen));
+  if ($('.graphviz-block', docEl)) jobs.push(renderGraphviz(gen));
   await Promise.allSettled(jobs);
 }
 
@@ -431,6 +456,176 @@ async function renderDiagrams(gen = renderGen) {
   }
 }
 
+let vizReady = null;
+/** Graphviz (```dot) via Viz.js (Graphviz compiled to WebAssembly). Graphs
+ *  that set no colours of their own follow the reader's theme. */
+async function renderGraphviz(gen = renderGen) {
+  const blocks = $$('.graphviz-block', docEl);
+  if (!blocks.length) return;
+  await loadScript(ORIGIN + '/vendor/viz/viz-global.js');
+  vizReady ||= window.Viz.instance();
+  const viz = await vizReady;
+  if (gen !== renderGen) return;
+  // Graphviz understands #rrggbb but not CSS rgb(...)
+  const hex = (c) => {
+    const m = String(c).match(/\d+(\.\d+)?/g);
+    return c.startsWith('#') || !m ? c : '#' + m.slice(0, 3).map((x) => Math.round(+x).toString(16).padStart(2, '0')).join('');
+  };
+  const fg = hex(getComputedStyle(docEl).color);
+  const muted = hex(getComputedStyle(root).getPropertyValue('--muted').trim() || fg);
+  const fontname = state.ui.font === 'serif' ? 'Times' : 'Helvetica';
+  const opts = {
+    graphAttributes: { bgcolor: 'transparent', fontname, fontcolor: fg, color: muted },
+    nodeAttributes: { fontname, fontcolor: fg, color: fg },
+    edgeAttributes: { fontname, fontcolor: fg, color: muted },
+  };
+  for (const block of blocks) {
+    const src = block.dataset.src ?? block.querySelector('.graphviz-src')?.textContent ?? '';
+    block.dataset.src = src;
+    try {
+      const svg = viz.renderSVGElement(src, opts);
+      cleanSvg(svg);
+      fixContrast(svg, fg);
+      block.replaceChildren(svg);
+      block.classList.add('rendered');
+    } catch (e) {
+      block.classList.remove('rendered');
+      const pre = document.createElement('pre');
+      pre.className = 'graphviz-src';
+      pre.textContent = src;
+      const err = document.createElement('p');
+      err.className = 'mermaid-error';
+      err.textContent = `${t('diagramError')} ${String(e.message || e).split('\n').filter(Boolean).slice(0, 2).join(' ')}`;
+      block.replaceChildren(pre, err);
+    }
+  }
+}
+
+/** Graphviz SVG may carry links from the source (URL="…"): keep only safe
+ *  ones, and drop anything scriptable. */
+function cleanSvg(svg) {
+  for (const el of svg.querySelectorAll('script, foreignObject, iframe')) el.remove();
+  for (const el of [svg, ...svg.querySelectorAll('*')]) {
+    for (const a of Array.from(el.attributes)) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith('on')) el.removeAttribute(a.name);
+      else if ((n === 'href' || n === 'xlink:href') && !/^(https?:|mailto:|#)/i.test(a.value.trim())) el.removeAttribute(a.name);
+    }
+  }
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+  const vb = svg.viewBox?.baseVal;
+  if (vb && vb.width) svg.style.width = Math.round(vb.width * 1.333) + 'px';
+}
+
+/** Text in our default colour that sits on a filled shape (style=filled):
+ *  make it dark or light, whichever reads on that fill. */
+function fixContrast(svg, fg) {
+  const lum = (c) => {
+    const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(c || '');
+    if (!m) return null;
+    const [r, g, b] = m.slice(1).map((x) => parseInt(x, 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  for (const g of svg.querySelectorAll('g.node, g.cluster')) {
+    const shape = g.querySelector('polygon, ellipse, path');
+    const l = lum(shape?.getAttribute('fill'));
+    if (l === null) continue;
+    for (const tx of g.querySelectorAll(':scope > text, :scope > g > text')) {
+      if (tx.getAttribute('fill') === fg) tx.setAttribute('fill', l > 0.55 ? '#1d2026' : '#f4f5f7');
+    }
+  }
+}
+
+/* ── Updates ─────────────────────────────────────────── */
+
+let ucDismissed = false;
+MR.update = (u) => {
+  const prev = state.update;
+  if (u.state === 'available') state.update = u;
+  else if (prev && prev.state === 'available') state.update = { ...prev, phase: u };
+  renderUpdateBadge();
+  const modalOpen = !$('#modal').hidden && $('#modal-body .update-modal');
+  switch (u.state) {
+    case 'checking': if (modalOpen || !$('#modal').hidden) updateModal({ state: 'checking' }); else MR.toast(t('updChecking')); break;
+    case 'latest': state.update = null; renderUpdateBadge(); $('#update-card').hidden = true; if (!$('#modal').hidden) closeModal(); MR.toast(t('updLatest')(u.current)); break;
+    case 'error': updateModal(u); break;
+    case 'downloading': updateModal(u); break;
+    case 'available':
+      if (u.manual || modalOpen) updateModal(u);
+      else showUpdateCard();
+      break;
+  }
+};
+
+function renderUpdateBadge() {
+  const u = state.update && state.update.version ? state.update : null;
+  $('#btn-more').classList.toggle('has-update', !!u);
+  $('#m-update span').textContent = u ? t('mUpdateTo')(u.version) : t('mCheckUpdate');
+  if (u) $('#uc-title').textContent = t('ucTitle')(u.version);
+}
+
+function showUpdateCard() {
+  if (ucDismissed || !state.update) return;
+  $('#uc-title').textContent = t('ucTitle')(state.update.version);
+  $('#update-card').hidden = false;
+}
+
+function updateModal(u) {
+  $('#update-card').hidden = true;
+  const a = state.update;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let html;
+  if (u.state === 'checking') {
+    html = `<div class="update-modal"><h2>${t('updChecking')}</h2><div class="um-bar"><i style="width:35%"></i></div></div>`;
+  } else if (u.state === 'downloading') {
+    const pct = Math.round((u.progress || 0) * 100);
+    html = `<div class="update-modal"><h2>${t('updDownloading')}</h2>
+      <div class="um-bar"><i style="width:${pct}%"></i></div><p class="um-sub">${pct}% · ${t('updRestart')}</p></div>`;
+  } else if (u.state === 'error') {
+    html = `<div class="update-modal"><h2>${t('updError')}</h2><p class="um-error" dir="auto">${esc(u.message || '')}</p>
+      <div class="um-actions"><button class="btn" data-u="page">${t('updReleases')}</button>
+      <button class="btn primary" data-u="${a ? 'install' : 'check'}">${t('updRetry')}</button></div></div>`;
+  } else {
+    html = `<div class="update-modal"><h2>${t('updTitle')(esc(u.version))}</h2><p class="um-sub">${t('updCurrent')(esc(u.current || state.version))}</p>
+      <div class="um-notes markdown-body" dir="auto">${u.notes || `<p>${t('updNoNotes')}</p>`}</div>
+      ${u.canInstall ? '' : `<p class="um-sub">${t('updPortable')}</p>`}
+      <div class="um-actions">
+        <button class="btn ghost" data-u="skip">${t('updSkip')}</button>
+        <button class="btn" data-u="later">${t('updLater')}</button>
+        <button class="btn primary" data-u="install">${u.canInstall ? t('updInstall') : t('updDownload')}</button>
+      </div></div>`;
+  }
+  modal(html);
+  for (const el of $$('.um-notes [data-mrdir], .um-notes p, .um-notes li, .um-notes h1, .um-notes h2, .um-notes h3', $('#modal-body'))) {
+    const d = detectDir(proseText(el, false));
+    if (d) el.dir = d;
+  }
+}
+
+$('#modal-body').addEventListener('click', (e) => {
+  const link = e.target.closest('a[href]');
+  if (link) { e.preventDefault(); send('link', { href: link.href }); return; }
+  const b = e.target.closest('[data-u]');
+  if (!b) return;
+  switch (b.dataset.u) {
+    case 'install': send('installUpdate'); if (!state.update?.canInstall) closeModal(); break;
+    case 'skip': send('skipUpdate'); state.update = null; renderUpdateBadge(); closeModal(); break;
+    case 'later': closeModal(); break;
+    case 'page': send('releasePage'); break;
+    case 'check': send('checkUpdate'); break;
+  }
+});
+$('#modal-body').addEventListener('change', (e) => {
+  if (e.target.id === 'auto-update') {
+    state.autoUpdate = e.target.checked;
+    send('autoUpdate', { on: e.target.checked });
+  }
+});
+$('#uc-notes').onclick = () => state.update && updateModal(state.update);
+$('#uc-install').onclick = () => { $('#update-card').hidden = true; if (state.update?.canInstall) updateModal({ state: 'downloading', progress: 0 }); send('installUpdate'); };
+$('#uc-close').onclick = () => { ucDismissed = true; $('#update-card').hidden = true; };
+
 MR.home = (recent) => {
   state.doc = null;
   state.recent = recent || state.recent;
@@ -491,7 +686,7 @@ function enhance() {
     cb.closest('li')?.classList.add('task');
   }
   // Copy buttons
-  for (const pre of $$('pre:not(.mermaid-src)', docEl)) {
+  for (const pre of $$('pre:not(.mermaid-src):not(.graphviz-src)', docEl)) {
     const b = document.createElement('button');
     b.className = 'copy-btn';
     b.innerHTML = '<svg><use href="#i-copy"/></svg>';
@@ -605,6 +800,13 @@ scroller.addEventListener('scroll', onScroll, { passive: true });
 /* ── Links ───────────────────────────────────────────── */
 
 docEl.addEventListener('click', (e) => {
+  const svgA = e.target.closest('svg a');
+  if (svgA) {
+    e.preventDefault();
+    const h = svgA.getAttribute('href') || svgA.getAttribute('xlink:href');
+    if (h && /^(https?:|mailto:)/i.test(h)) send('link', { href: h });
+    return;
+  }
   const a = e.target.closest('a[href]');
   if (!a || e.target.closest('.copy-btn')) return;
   e.preventDefault();
@@ -672,7 +874,7 @@ function runFind(query, keepPos) {
   $('#findbar').classList.remove('nomatch');
   if (!q) { $('#find-count').textContent = ''; return; }
   const walker = document.createTreeWalker(docEl, NodeFilter.SHOW_TEXT, {
-    acceptNode: (n) => (n.parentElement.closest('.copy-btn,.h-anchor,.katex,.mermaid-block') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    acceptNode: (n) => (n.parentElement.closest('.copy-btn,.h-anchor,.katex,.mermaid-block,.graphviz-block') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
   });
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -874,6 +1076,10 @@ function action(act) {
     case 'copyPath': if (state.doc?.path) copyText(state.doc.path).then(() => MR.toast(t('pathCopied'))); break;
     case 'shortcuts': showShortcuts(); break;
     case 'about': showAbout(); break;
+    case 'checkUpdate':
+      if (state.update?.version) updateModal(state.update);
+      else send('checkUpdate');
+      break;
     default: send(act);
   }
 }
@@ -894,8 +1100,10 @@ function showShortcuts() {
 function showAbout() {
   modal(`<div class="about"><img src="${ORIGIN}/icon.png" alt=""><h2>Mad Reader ${state.version}</h2>
     <p>${t('about')}</p>
-    <p dir="ltr">Rust · pulldown-cmark · syntect · KaTeX · Mermaid · WebView2</p>
-    <p>MIT License</p></div>`);
+    <p dir="ltr">Rust · pulldown-cmark · syntect · KaTeX · Mermaid · Graphviz · WebView2</p>
+    <p>MIT License</p>
+    <div class="about-update"><button class="btn" data-u="check">${t('checkNow')}</button>
+    <label><input type="checkbox" id="auto-update" ${state.autoUpdate ? 'checked' : ''}> ${t('autoCheck')}</label></div></div>`);
 }
 
 /* ── Keyboard ────────────────────────────────────────── */

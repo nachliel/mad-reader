@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 — 2026-11-14
+
+- **Graphviz:** ```` ```dot ```` / ```` ```graphviz ```` blocks are laid out by Graphviz (Viz.js, WebAssembly) and work offline. All layout engines are available (`dot`, `neato`, `circo`, `fdp`, `twopi`, …). Graphs follow the theme unless they set their own colours, text on filled nodes stays readable, and Hebrew labels work.
+- **Updates:** a quiet daily check against GitHub Releases, with a card that shows the new version and its release notes. **Update** downloads the setup, verifies its size and SHA-256, installs silently and reopens the document you had open. You can skip a version, check by hand (⋯ → Check for updates…) or turn the check off (About).
+- Release workflow (`.github/workflows/release.yml`): pushing a `v*` tag builds, tests and publishes the setup and the portable zip.
+- The setup removes the duplicate *Installed apps* entry left by an earlier in-app install.
+
 ## 1.1.0 — 2026-11-14
 
 - **Math:** LaTeX via KaTeX: `$inline$`, `$$display$$` and ```` ```math ```` blocks. Prices like "$5 and $10" are left alone.

@@ -25,6 +25,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-update" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></symbol>
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></symbol>
   </defs>
 </svg>
@@ -174,6 +175,7 @@
   <button data-act="guide"><span data-i18n="userGuide">User guide</span></button>
   <button data-act="shortcuts"><span data-i18n="mShortcuts">Keyboard shortcuts</span><kbd>F1</kbd></button>
   <button data-act="defaultApps"><span data-i18n="mDefaultApps">Default app settings…</span></button>
+  <button data-act="checkUpdate" id="m-update"><span data-i18n="mCheckUpdate">Check for updates…</span></button>
   <button data-act="about"><span data-i18n="mAbout">About Mad Reader</span></button>
 </div>
 
@@ -182,6 +184,14 @@
     <button class="tb sm modal-x" id="modal-close"><svg><use href="#i-x"/></svg></button>
     <div id="modal-body"></div>
   </div>
+</div>
+
+<div id="update-card" hidden>
+  <svg class="uc-icon"><use href="#i-update"/></svg>
+  <div class="uc-text"><strong id="uc-title"></strong><span data-i18n="ucText">A new version is ready.</span></div>
+  <button class="btn" id="uc-notes" data-i18n="whatsNew">What's new</button>
+  <button class="btn primary" id="uc-install" data-i18n="updateNow">Update</button>
+  <button class="tb sm" id="uc-close" data-i18n-title="later"><svg><use href="#i-x"/></svg></button>
 </div>
 
 <div id="drop-overlay" hidden><div data-i18n="dropToOpen">Drop to open</div></div>

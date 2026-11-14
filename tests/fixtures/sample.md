@@ -48,5 +48,12 @@ flowchart LR
 console.log("code stays LTR");
 ```
 
+```dot
+digraph G {
+  node [shape=box style="rounded,filled" fillcolor="#e0e7ff"]
+  קורא -> מסמך -> תצוגה
+}
+```
+
 <script>window.__pwned = 1</script>
 <img src="nope.png" onerror="window.__pwned = 2">

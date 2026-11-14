@@ -11,7 +11,10 @@ Requires: pip install playwright   (no browser download needed — it attaches
 to the WebView2 that ships with Windows).
 """
 import argparse
+import http.server
+import json
 import os
+import threading
 import shutil
 import socket
 import subprocess
@@ -26,6 +29,35 @@ ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures"
 
 results = []
+
+# A fake GitHub "latest release" answer, served locally (MADREADER_UPDATE_URL),
+# so the update checks never touch the network.
+FAKE_RELEASE = {
+    "tag_name": "v99.0.0",
+    "html_url": "https://example.com/releases/v99.0.0",
+    "body": "## What's new\n\n- Faster everything\n- שיפורים בעברית",
+    "assets": [{"name": "MadReader-99.0.0-setup.exe", "browser_download_url": "http://127.0.0.1:1/none",
+                "size": 10, "digest": "sha256:00"}],
+}
+
+
+def serve_fake_release():
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = json.dumps(FAKE_RELEASE).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            H.hits += 1
+
+        def log_message(self, *a):
+            pass
+    H.hits = 0
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, H
 
 
 def check(name, ok, detail=""):
@@ -73,6 +105,11 @@ def main():
     env["APPDATA"] = str(tmp / "appdata")
     env["LOCALAPPDATA"] = str(tmp / "localappdata")
     env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = f"--remote-debugging-port={port}"
+    srv, handler = serve_fake_release()
+    env["MADREADER_UPDATE_URL"] = f"http://127.0.0.1:{srv.server_address[1]}/latest.json"
+    env.pop("MADREADER_NO_UPDATE_CHECK", None)
+    global UPDATE_HANDLER
+    UPDATE_HANDLER = handler
     (tmp / "appdata").mkdir()
     (tmp / "localappdata").mkdir()
     # start in light theme, English UI, so results don't depend on this PC
@@ -165,6 +202,13 @@ def run_checks(page, docs, sample, out, tmp):
     except Exception:
         err = js("document.querySelector('.mermaid-error')?.textContent || ''")
         check("mermaid diagram drawn", False, err)
+    try:
+        page.wait_for_selector("#doc .graphviz-block.rendered svg", timeout=15000)
+        texts = js("Array.from(document.querySelectorAll('#doc .graphviz-block svg g.node text')).map(t => t.textContent)")
+        check("Graphviz graph drawn with Hebrew nodes", sorted(texts) == sorted(["קורא", "מסמך", "תצוגה"]), texts)
+        check("Graphviz has no copy button", js("!document.querySelector('#doc .graphviz-block .copy-btn')"))
+    except Exception:
+        check("Graphviz graph drawn", False, js("document.querySelector('.graphviz-block')?.textContent || ''"))
     wait_js(page, "document.querySelector('#doc img[src=\"pic.png\"]')?.naturalWidth > 0", timeout=5000)
     check("local image loads", True)
     page.screenshot(path=str(out / "01-hebrew-light.png"))
@@ -212,6 +256,9 @@ def run_checks(page, docs, sample, out, tmp):
     check("Ctrl+T cycles theme (sepia → dark)", js("document.documentElement.dataset.theme") == "dark")
     page.wait_for_selector("#doc .mermaid-block.rendered svg", timeout=15000)
     check("diagram redrawn for dark theme", True)
+    wait_js(page, "document.querySelector('#doc .graphviz-block g.edge path')?.getAttribute('stroke') !== '#5f6672'", timeout=5000)
+    fills = js("Array.from(document.querySelectorAll('#doc .graphviz-block g.node text')).map(t => t.getAttribute('fill'))")
+    check("Graphviz text stays dark on light node fills in dark theme", all(f == "#1d2026" for f in fills), fills)
     page.wait_for_timeout(400)
     page.screenshot(path=str(out / "02-hebrew-dark.png"))
     size0 = js("getComputedStyle(document.documentElement).getPropertyValue('--size')")
@@ -264,9 +311,48 @@ def run_checks(page, docs, sample, out, tmp):
     wait_js(page, "document.querySelector('#doc h1')?.textContent.includes('User Guide')", timeout=5000)
     check("guide switches to English with the UI", js("document.documentElement.dir") == "ltr")
 
+    print("updates")
+    try:
+        page.wait_for_selector("#update-card:not([hidden])", timeout=15000)
+        check("background check finds the new version", "99.0.0" in js("document.querySelector('#uc-title').textContent"))
+    except Exception:
+        check("background check finds the new version", False, f"server hits={UPDATE_HANDLER.hits}")
+    check("More button shows an update dot", js("document.querySelector('#btn-more').classList.contains('has-update')"))
+    page.screenshot(path=str(out / "06-update-card.png"))
+    page.click("#uc-notes")
+    page.wait_for_selector("#modal-body .update-modal")
+    check("release notes rendered from Markdown", js("document.querySelector('.um-notes h2')?.textContent") == "What's new")
+    check("Hebrew note line is rtl", js("Array.from(document.querySelectorAll('.um-notes li')).pop().dir") == "rtl")
+    check("portable copy offers the download page", js("document.querySelector('[data-u=install]').textContent").startswith("Download"))
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / "07-update-modal.png"))
+    page.click("[data-u=skip]")
+    page.wait_for_timeout(600)
+    st = json.loads((tmp / "appdata" / "MadReader" / "settings.json").read_text(encoding="utf-8-sig"))
+    check("skip remembers the version", st.get("updates", {}).get("skipped") == "99.0.0", st.get("updates"))
+    check("update dot cleared after skip", js("!document.querySelector('#btn-more').classList.contains('has-update')"))
+    page.click("#btn-more")
+    page.click("#m-update")
+    page.wait_for_selector("#modal-body .um-notes", timeout=10000)
+    check("manual check still shows a skipped version", "99.0.0" in js("document.querySelector('#modal-body h2').textContent"))
+    page.click("[data-u=later]")
+    FAKE_RELEASE["tag_name"] = "v0.0.1"
+    page.click("#btn-more")
+    page.click("[data-act=about]")
+    page.click("#modal-body [data-u=check]")
+    wait_js(page, "!document.querySelector('#toast').hidden && document.querySelector('#toast').textContent.includes('latest')", timeout=10000)
+    check("older release → 'latest version' message", True)
+    check("update dot cleared when up to date", js("!document.querySelector('#btn-more').classList.contains('has-update')"))
+    page.click("#btn-more")
+    page.click("[data-act=about]")
+    page.click("#auto-update")
+    page.wait_for_timeout(600)
+    st = json.loads((tmp / "appdata" / "MadReader" / "settings.json").read_text(encoding="utf-8-sig"))
+    check("automatic check can be turned off", st.get("updates", {}).get("disabled") is True, st.get("updates"))
+    page.keyboard.press("Escape")
+
     print("settings persisted")
     page.wait_for_timeout(800)
-    import json
     st = json.loads((tmp / "appdata" / "MadReader" / "settings.json").read_text(encoding="utf-8-sig"))
     check("theme saved", st["ui"].get("theme") == "dark", st["ui"])
     check("language saved", st["ui"].get("lang") == "en", st["ui"])

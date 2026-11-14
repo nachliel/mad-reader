@@ -495,4 +495,40 @@ mark.find-hit.current { background: var(--mark-current); color: #000; }
 #doc .mermaid-error { font-family: var(--font-ui); font-size: .8em; color: #dc2626; text-align: start; margin: .3em 0 0; }
 @media print { #doc .mermaid-block.rendered { border: 0; } }
 
+/* Graphviz */
+#doc .graphviz-block { margin: 0 0 1.05em; text-align: center; overflow-x: auto; direction: ltr; }
+#doc .graphviz-block svg { max-width: 100%; height: auto; }
+#doc .graphviz-block.rendered { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+#doc .graphviz-src { text-align: left; }
+#doc .graphviz-block .mermaid-error { font-family: var(--font-ui); font-size: .8em; color: #dc2626; text-align: start; margin: .3em 0 0; }
+@media print { #doc .graphviz-block.rendered { border: 0; } }
+
+/* Updates */
+#update-card {
+  position: fixed; inset-block-end: 18px; inset-inline-end: 18px; z-index: 55;
+  display: flex; align-items: center; gap: 10px; max-width: min(520px, calc(100vw - 36px));
+  padding: 10px 10px 10px 14px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+}
+#update-card .uc-icon { width: 22px; height: 22px; flex: none; color: var(--accent); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#update-card .uc-text { display: flex; flex-direction: column; min-width: 0; margin-inline-end: 4px; }
+#update-card .uc-text span { color: var(--muted); font-size: 12px; }
+#update-card .btn { padding: 5px 11px; font-size: 12.5px; }
+#btn-more.has-update::after {
+  content: ''; position: absolute; inset-block-start: 6px; inset-inline-end: 6px;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+}
+#btn-more { position: relative; }
+.update-modal .um-sub { color: var(--muted); margin: -4px 0 12px; font-size: 13px; }
+.update-modal .um-notes { max-height: 46vh; overflow: auto; padding: 4px 14px; margin: 0 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.update-modal .um-notes h1, .update-modal .um-notes h2, .update-modal .um-notes h3 { font-size: 1.05em; margin: .8em 0 .3em; }
+.update-modal .um-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.update-modal .um-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin: 6px 0 12px; }
+.update-modal .um-bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+.update-modal .um-error { color: #dc2626; }
+.about .about-update { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
+.about .about-update label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+@media print { #update-card { display: none !important; } }
+
 body.no-doc #sidebar { visibility: hidden; }

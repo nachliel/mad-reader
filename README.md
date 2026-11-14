@@ -16,7 +16,8 @@ Mad Reader opens `.md` files fast (a single 4 MB exe that starts in well under a
 - **Legacy encodings.** UTF-8, UTF-16, and old Windows-1255 Hebrew files all display correctly.
 - **GitHub-flavoured Markdown.** Tables, task lists, footnotes, alerts (`> [!NOTE]`), definition lists, strikethrough, super/subscript, safe inline HTML (`<details>`, `<kbd>`, …). Front matter is hidden.
 - **Syntax highlighting** for about 150 languages, with a copy button on every code block.
-- **Math and diagrams.** LaTeX math (`$…$`, `$$…$$`, ```` ```math ````) is typeset with KaTeX, and ```` ```mermaid ```` blocks are drawn as diagrams that follow the light or dark theme. Both work offline and load only when a document uses them.
+- **Math, diagrams and graphs.** LaTeX math (`$…$`, `$$…$$`, ```` ```math ````) is typeset with KaTeX. ```` ```mermaid ```` blocks are drawn as diagrams and charts. ```` ```dot ```` blocks are laid out by Graphviz. All of them follow the light or dark theme, work offline and load only when a document uses them.
+- **Automatic updates.** A quiet daily check against GitHub Releases. One click downloads the new version, verifies it, installs it and reopens your document. It can be turned off.
 - **Hebrew interface.** Menus, buttons, dialogs and the user guide are available in Hebrew, with the whole interface mirrored right-to-left. The language follows Windows by default, or you can pick it in **Aa → Language**.
 - **Live reload.** Edit the file in any editor and the view refreshes on save, keeping your place.
 - **Comfortable reading.** Light, Sepia and Dark themes (or follow Windows), Sans or Serif, text size, line spacing, page width and justification. All of it is remembered.
@@ -27,12 +28,12 @@ Mad Reader opens `.md` files fast (a single 4 MB exe that starts in well under a
 
 ## Install
 
-Download one of these from `dist/` (or build it yourself, see below):
+Download one of these from the [latest release](https://github.com/nachliel/mad-reader/releases/latest) (or build it yourself, see below):
 
 | File | What it is |
 |---|---|
-| `MadReader-1.1.0-setup.exe` | Installer (English / Hebrew). Per-user, no admin needed. Adds a Start-menu entry, registers `.md` files, and adds Mad Reader to *Installed apps*. |
-| `MadReader-1.1.0-portable.zip` | Just the exe. Run it anywhere. Click **Install** on its home screen to install it in place. |
+| `MadReader-1.2.0-setup.exe` | Installer (English / Hebrew). Per-user, no admin needed. Adds a Start-menu entry, registers `.md` files, and adds Mad Reader to *Installed apps*. |
+| `MadReader-1.2.0-portable.zip` | Just the exe. Run it anywhere. Click **Install** on its home screen to install it in place. |
 
 **Requirements:** Windows 10 or 11 (x64). The Microsoft Edge WebView2 Runtime is needed and already ships with Windows 11 and up-to-date Windows 10.
 
@@ -76,6 +77,25 @@ MadReader.exe --default-apps     open Settings → Default apps
 MadReader.exe --version
 ```
 
+Set the environment variable `MADREADER_NO_UPDATE_CHECK=1` to turn off the background update check (useful for managed PCs).
+
+## Updates and releases
+
+No server is needed. Releases live on GitHub:
+
+1. The app calls `https://api.github.com/repos/nachliel/mad-reader/releases/latest` about once a day. The request carries no personal data.
+2. If the tag (`v1.2.0`) is newer than the running version, the app shows the release notes. On **Update** it downloads `MadReader-<ver>-setup.exe` with WinHTTP, checks its size and the SHA-256 digest that GitHub publishes for every asset, and runs it with `/SILENT /RELAUNCH=1`. The setup closes Mad Reader, installs over it and starts it again with `--updated`, which reopens the last document.
+3. Portable copies open the release page instead.
+
+**Publishing a release:** bump `version` in `Cargo.toml`, add a `## <version>` section to `CHANGELOG.md`, commit, then:
+
+```powershell
+git tag v1.2.0
+git push origin main v1.2.0
+```
+
+`.github/workflows/release.yml` builds and tests on a Windows runner, then creates the GitHub release with the setup, the portable zip and the CHANGELOG section as notes. The repository must be public, or the app can't read the release without a token.
+
 ## Files and registry
 
 | What | Where |
@@ -99,13 +119,13 @@ cargo test              # unit tests
 ```
 
 - Regenerate the icons: `python tools/make_icons.py` (needs Pillow).
-- Update the bundled KaTeX / Mermaid: `.\tools\update_vendor.ps1` (needs npm).
+- Update the bundled KaTeX / Mermaid / Viz.js: `.\tools\update_vendor.ps1` (needs npm).
 
 ### Testing
 
-`cargo test` covers the Markdown pipeline: Hebrew slugs, sanitizing, math and Mermaid detection, encodings and paths.
+`cargo test` covers the Markdown pipeline (Hebrew slugs, sanitizing, math, Mermaid and Graphviz detection, encodings, paths) and the updater (version comparison, release parsing, URLs, SHA-256).
 
-`python tests\e2e.py` runs the end-to-end suite (about 50 checks) against the real exe. It starts Mad Reader with throw-away settings folders, attaches [Playwright](https://playwright.dev/python/) to WebView2's DevTools port (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`), and drives the app with the keyboard and mouse. It covers per-paragraph direction, math, diagrams, images, niqqud-insensitive search, links and history, themes, the Hebrew interface, live reload, recent files, the guide and saved settings. Pass `--out DIR` to keep the screenshots. It needs `pip install playwright` but no browser download, because it uses the WebView2 that ships with Windows.
+`python tests\e2e.py` runs the end-to-end suite (about 60 checks) against the real exe. It starts Mad Reader with throw-away settings folders, attaches [Playwright](https://playwright.dev/python/) to WebView2's DevTools port (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`), and drives the app with the keyboard and mouse. It covers per-paragraph direction, math, Mermaid and Graphviz, images, niqqud-insensitive search, links and history, themes, the Hebrew interface, live reload, recent files, the guide, the update flow (against a local fake release server) and saved settings. Pass `--out DIR` to keep the screenshots. It needs `pip install playwright` but no browser download, because it uses the WebView2 that ships with Windows.
 
 
 ### How it works
@@ -113,14 +133,14 @@ cargo test              # unit tests
 ```
  file.md ──► Rust: decode (UTF-8/16/1255) ──► pulldown-cmark (GFM) ──► heading slugs
                                               ├─► syntect (code highlighting)
-                                              └─► math / mermaid blocks marked for the UI
+                                              └─► math / mermaid / dot blocks marked for the UI
                                                        │
                                                ammonia (sanitize)
                                                        │  JSON via evaluate_script
                                                        ▼
             WebView2 (wry/tao) ◄── embedded UI shell (assets/ui: HTML/CSS/JS)
               • per-block bidi detection, TOC, find, themes, shortcuts, EN/HE UI
-              • KaTeX + Mermaid (embedded, loaded on demand from /vendor/)
+              • KaTeX, Mermaid, Viz.js/Graphviz (embedded, loaded on demand from /vendor/)
               • local images served via http://madreader.localhost/doc/<path>
               • links/keys → IPC → Rust (open file, history, shell actions)
 ```
@@ -132,9 +152,11 @@ cargo test              # unit tests
 | `src/install.rs` | Per-user install / uninstall, file associations, Default Apps |
 | `src/settings.rs` | JSON settings |
 | `src/i18n.rs` | Interface language for Rust-side messages |
+| `src/update.rs` | Update check and download (GitHub Releases, WinHTTP) |
 | `assets/ui/` | The reader UI (embedded into the exe at compile time) |
 | `docs/guide.md`, `docs/guide.he.md` | In-app user guide, English and Hebrew (embedded) |
-| `assets/vendor/` | KaTeX and Mermaid (embedded; Mermaid gzip-compressed by `build.rs`) |
+| `assets/vendor/` | KaTeX, Mermaid and Viz.js (embedded; large files gzip-compressed by `build.rs`) |
+| `.github/workflows/release.yml` | Builds and publishes a GitHub release for each `v*` tag |
 | `tests/e2e.py`, `tests/fixtures/` | End-to-end UI tests |
 | `installer/MadReader.iss` | Inno Setup script |
 | `build.rs` | Embeds icons, manifest and version info |
@@ -143,4 +165,4 @@ cargo test              # unit tests
 
 MIT. See [LICENSE](LICENSE).
 
-Bundled third-party software: [KaTeX](https://katex.org) (MIT) and [Mermaid](https://mermaid.js.org) (MIT). Their licenses are in `assets/vendor/*/LICENSE`.
+Bundled third-party software: [KaTeX](https://katex.org) (MIT), [Mermaid](https://mermaid.js.org) (MIT) and [Viz.js](https://github.com/mdaines/viz-js) (MIT), which contains [Graphviz](https://graphviz.org) (EPL-1.0). Their licenses are in `assets/vendor/*/LICENSE`.

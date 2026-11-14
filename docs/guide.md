@@ -63,6 +63,23 @@ flowchart LR
     C -->|no| E[LTR]
 ```
 
+Mermaid also draws charts. For example, `pie`, and `xychart-beta` for bar and line charts. In `xychart-beta`, put Hebrew axis labels in quotes: `x-axis ["ינו", "פבר", "מרץ"]`.
+
+## Graphs (Graphviz)
+
+A code block with the `dot` (or `graphviz`) language is laid out by [Graphviz](https://graphviz.org), the standard tool for networks, trees and dependency graphs. It is good at large graphs and offers several layouts (`dot`, `neato`, `circo`, `fdp`, `twopi`). Graphs that don't set their own colours follow the theme:
+
+```dot
+digraph G {
+    rankdir=LR
+    node [shape=box style=rounded]
+    "file.md" -> parser -> sanitizer -> view
+    parser -> highlighter -> sanitizer
+}
+```
+
+Hebrew labels work as they are (`דנה -> יוסי`). Labels with spaces need quotes: `"Mad Reader"`. Mermaid is easier for simple flowcharts, pie charts and timelines. Graphviz is better for real graphs with many nodes.
+
 ## עברית
 
 זהו קטע לדוגמה בעברית. Mad Reader מזהה את כיוון הטקסט של כל פסקה בנפרד, כך שמסמכים מעורבים בעברית ובאנגלית נראים נכון.
@@ -136,6 +153,18 @@ Term
 Collapsible sections work as on GitHub.
 
 </details>
+
+## Updates
+
+Mad Reader checks for a new version about once a day, quietly in the background. It only asks GitHub which version is the latest and sends nothing about you or your files. When there is a new version, a small card appears in the corner:
+
+- **What's new** shows the release notes.
+- **Update** downloads the new setup program, checks it, closes Mad Reader, installs and opens Mad Reader again with the same document. It takes a few seconds.
+- **Skip this version** stops reminders until the next version comes out.
+
+You can check by hand at any time in **⋯ → Check for updates…**. To turn off the daily check, open **⋯ → About Mad Reader** and clear **Check for updates automatically**.
+
+A portable copy (one you didn't install) opens the download page instead of updating itself.
 
 ## Printing and PDF
 

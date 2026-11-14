@@ -26,6 +26,20 @@ pub struct Settings {
     pub window: WindowState,
     /// Hide the "make Mad Reader your default app" hint.
     pub dismissed_default_hint: bool,
+    pub updates: UpdateSettings,
+    /// Document to reopen after an update restarts the app.
+    pub resume: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[serde(default)]
+pub struct UpdateSettings {
+    /// Turn off the daily background check (Check for updates still works).
+    pub disabled: bool,
+    /// Unix time of the last background check.
+    pub last_check: u64,
+    /// A version the user chose to skip.
+    pub skipped: String,
 }
 
 pub fn config_dir() -> PathBuf {
