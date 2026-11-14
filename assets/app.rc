@@ -1,0 +1,31 @@
+#include <winver.h>
+
+1 ICON "@ASSETS@/app.ico"
+2 ICON "@ASSETS@/doc.ico"
+1 24 "@ASSETS@/app.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     @MAJOR@,@MINOR@,@PATCH@,0
+PRODUCTVERSION  @MAJOR@,@MINOR@,@PATCH@,0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName",      "Mad Reader"
+      VALUE "FileDescription",  "Mad Reader - Markdown reader"
+      VALUE "FileVersion",      "@VERSION@"
+      VALUE "InternalName",     "mad-reader"
+      VALUE "OriginalFilename", "mad-reader.exe"
+      VALUE "ProductName",      "Mad Reader"
+      VALUE "ProductVersion",   "@VERSION@"
+      VALUE "LegalCopyright",   "MIT License"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END

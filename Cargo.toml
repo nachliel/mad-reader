@@ -1,0 +1,31 @@
+[package]
+name = "mad-reader"
+version = "1.0.0"
+description = "A fast, good-looking Markdown reader for Windows with first-class Hebrew (RTL) support"
+license = "MIT"
+authors = ["Nachliel"]
+edition = "2024"
+
+[dependencies]
+ammonia = "4.2.5"
+mslnk = "0.1.8"
+percent-encoding = "2.3.2"
+pulldown-cmark = "0.13.6"
+rfd = "0.18.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+syntect = { version = "5.3.0", default-features = false, features = ["default-syntaxes", "default-themes", "html", "regex-fancy"] }
+tao = "0.37.2"
+windows-sys = { version = "0.61.2", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+winreg = "0.56.0"
+wry = "0.57.2"
+
+[build-dependencies]
+embed-resource = "3.0.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mad Reader</title>
+<base id="docbase" href="http://madreader.localhost/">
+<link rel="stylesheet" href="http://madreader.localhost/app.css">
+<link rel="stylesheet" href="http://madreader.localhost/highlight.css">
+</head>
+<body class="no-doc">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-toc" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+    <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-find" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></symbol>
+    <symbol id="i-aa" viewBox="0 0 24 24"><path d="M3 18l5-12 5 12M4.8 14h6.4M15 18v-5.5a3 3 0 0 1 6 0V18M15 15h6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+    <symbol id="i-dir" viewBox="0 0 24 24"><path d="M10 4h9M15 4v16M10 4a4 4 0 0 0 0 8h5"/><path d="M3 17h8M3 17l2.5-2.5M3 17l2.5 2.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></symbol>
+  </defs>
+</svg>
+
+<header id="toolbar">
+  <div class="tb-group">
+    <button class="tb" id="btn-toc" title="Contents (Ctrl+B)"><svg><use href="#i-toc"/></svg></button>
+    <button class="tb" id="btn-back" title="Back (Alt+←)" disabled><svg><use href="#i-back"/></svg></button>
+    <button class="tb" id="btn-fwd" title="Forward (Alt+→)" disabled><svg><use href="#i-fwd"/></svg></button>
+    <button class="tb" id="btn-open" title="Open file (Ctrl+O)"><svg><use href="#i-open"/></svg></button>
+  </div>
+  <div id="doc-title" title=""><span id="doc-title-main">Mad Reader</span><span id="doc-title-file"></span></div>
+  <div class="tb-group">
+    <button class="tb" id="btn-find" title="Find (Ctrl+F)"><svg><use href="#i-find"/></svg></button>
+    <button class="tb tb-text" id="btn-dir" title="Text direction (Ctrl+D)"><span id="dir-label">Auto</span></button>
+    <button class="tb" id="btn-aa" title="Appearance"><svg><use href="#i-aa"/></svg></button>
+    <button class="tb" id="btn-more" title="More"><svg><use href="#i-more"/></svg></button>
+  </div>
+  <div id="progress"></div>
+</header>
+
+<aside id="sidebar" aria-label="Table of contents">
+  <div class="sb-head">Contents</div>
+  <nav id="toc"></nav>
+</aside>
+
+<main id="scroller">
+  <section id="welcome">
+    <div class="wl-inner">
+      <img class="wl-logo" src="http://madreader.localhost/icon.png" alt="" width="88" height="88">
+      <h1 class="wl-title">Mad Reader</h1>
+      <p class="wl-tag">Markdown, beautifully. <span dir="rtl" lang="he">גם בעברית.</span></p>
+      <div class="wl-actions">
+        <button class="btn primary" id="wl-open"><svg><use href="#i-open"/></svg>Open file<kbd>Ctrl O</kbd></button>
+        <button class="btn" id="wl-guide"><svg><use href="#i-book"/></svg>User guide</button>
+      </div>
+      <p class="wl-drop">…or drop a Markdown file anywhere in this window</p>
+
+      <div class="card" id="card-install" hidden>
+        <div class="card-text">
+          <strong>Install Mad Reader</strong>
+          <span>Adds it to the Start menu and to “Open with” for .md files. No admin rights needed.</span>
+        </div>
+        <button class="btn primary" id="btn-install">Install</button>
+      </div>
+      <div class="card" id="card-default" hidden>
+        <div class="card-text">
+          <strong>Open .md files with Mad Reader</strong>
+          <span>Windows asks you to confirm the default app once, in Settings → Default apps.</span>
+        </div>
+        <button class="btn primary" id="btn-default">Set as default</button>
+        <button class="btn ghost" id="btn-dismiss" title="Don't show again"><svg><use href="#i-x"/></svg></button>
+      </div>
+
+      <div id="recent-wrap" hidden>
+        <div class="recent-head"><span>Recent</span><button class="link-btn" id="btn-clear-recent">Clear</button></div>
+        <ul id="recent"></ul>
+      </div>
+    </div>
+  </section>
+
+  <article id="doc" class="markdown-body" dir="auto"></article>
+  <footer id="doc-foot"></footer>
+</main>
+
+<div id="findbar" hidden>
+  <svg class="fb-icon"><use href="#i-find"/></svg>
+  <input id="find-input" type="text" placeholder="Find in document" spellcheck="false" dir="auto">
+  <span id="find-count"></span>
+  <button class="tb sm" id="find-prev" title="Previous (Shift+Enter)"><svg><use href="#i-up"/></svg></button>
+  <button class="tb sm" id="find-next" title="Next (Enter)"><svg><use href="#i-down"/></svg></button>
+  <button class="tb sm" id="find-close" title="Close (Esc)"><svg><use href="#i-x"/></svg></button>
+</div>
+
+<div class="pop" id="pop-aa" hidden>
+  <div class="pop-row"><label>Theme</label>
+    <div class="seg" data-key="theme">
+      <button data-v="system" title="Follow Windows">Auto</button>
+      <button data-v="light"><i class="sw sw-light"></i>Light</button>
+      <button data-v="sepia"><i class="sw sw-sepia"></i>Sepia</button>
+      <button data-v="dark"><i class="sw sw-dark"></i>Dark</button>
+    </div>
+  </div>
+  <div class="pop-row"><label>Font</label>
+    <div class="seg" data-key="font">
+      <button data-v="sans" class="f-sans">Sans · אבג</button>
+      <button data-v="serif" class="f-serif">Serif · אבג</button>
+    </div>
+  </div>
+  <div class="pop-row"><label>Text size</label>
+    <div class="stepper">
+      <button id="size-down" title="Smaller (Ctrl+−)">A−</button>
+      <span id="size-val">17</span>
+      <button id="size-up" title="Larger (Ctrl+=)">A+</button>
+    </div>
+  </div>
+  <div class="pop-row"><label>Line spacing</label>
+    <div class="seg" data-key="leading">
+      <button data-v="compact">Compact</button>
+      <button data-v="normal">Normal</button>
+      <button data-v="relaxed">Relaxed</button>
+    </div>
+  </div>
+  <div class="pop-row"><label>Page width</label>
+    <div class="seg" data-key="width">
+      <button data-v="narrow">Narrow</button>
+      <button data-v="normal">Normal</button>
+      <button data-v="wide">Wide</button>
+      <button data-v="full">Full</button>
+    </div>
+  </div>
+  <div class="pop-row"><label>Direction</label>
+    <div class="seg" data-key="direction">
+      <button data-v="auto" title="Per paragraph, from its language">Auto</button>
+      <button data-v="rtl">RTL · ימין</button>
+      <button data-v="ltr">LTR</button>
+    </div>
+  </div>
+  <div class="pop-row"><label>Justify text</label>
+    <div class="seg" data-key="justify">
+      <button data-v="off">Off</button>
+      <button data-v="on">On</button>
+    </div>
+  </div>
+</div>
+
+<div class="pop menu" id="pop-more" hidden>
+  <button data-act="edit">Open in editor<kbd>Ctrl E</kbd></button>
+  <button data-act="reveal">Show in folder<kbd>Ctrl Shift E</kbd></button>
+  <button data-act="openWith">Open with…</button>
+  <button data-act="copyPath">Copy file path</button>
+  <hr>
+  <button data-act="print">Print / Save as PDF<kbd>Ctrl P</kbd></button>
+  <button data-act="reload">Reload<kbd>F5</kbd></button>
+  <button data-act="newWindow">New window<kbd>Ctrl N</kbd></button>
+  <button data-act="fullscreen">Full screen<kbd>F11</kbd></button>
+  <hr>
+  <button data-act="home">Home<kbd>Ctrl H</kbd></button>
+  <button data-act="guide">User guide</button>
+  <button data-act="shortcuts">Keyboard shortcuts<kbd>F1</kbd></button>
+  <button data-act="defaultApps">Default app settings…</button>
+  <button data-act="about">About Mad Reader</button>
+</div>
+
+<div id="modal" hidden>
+  <div class="modal-card" role="dialog">
+    <button class="tb sm modal-x" id="modal-close"><svg><use href="#i-x"/></svg></button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div id="drop-overlay" hidden><div>Drop to open</div></div>
+<div id="linkhint" hidden></div>
+<div id="toast" hidden></div>
+
+<script src="http://madreader.localhost/app.js"></script>
+</body>
+</html>
