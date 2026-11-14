@@ -22,7 +22,7 @@ Mad Reader opens `.md` files fast (a single 4 MB exe that starts in well under a
 - **Live reload.** Edit the file in any editor and the view refreshes on save, keeping your place.
 - **Comfortable reading.** Light, Sepia and Dark themes (or follow Windows), Sans or Serif, text size, line spacing, page width and justification. All of it is remembered.
 - **Navigation.** A table-of-contents sidebar that tracks where you are, links between Markdown files, back and forward history, a recent-files list, drag and drop.
-- **Print / PDF** without the app chrome (<kbd>Ctrl</kbd>+<kbd>P</kbd>).
+- **Export to PDF, Word (.docx) and HTML** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>). Hebrew stays right-to-left in Word, and equations become editable Word equations. **Print** with <kbd>Ctrl</kbd>+<kbd>P</kbd>.
 - **Safe.** Markdown files can't run scripts. All HTML is sanitized.
 - **Easy to install.** Use the setup program, or click **Install** inside the app. Neither needs admin rights.
 
@@ -59,7 +59,8 @@ Alternatively, right-click a `.md` file → **Open with → Choose another app �
 | Text size | <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>−</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd> / <kbd>Ctrl</kbd>+wheel |
 | Back / forward | <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd>, mouse side buttons |
 | Reload | <kbd>F5</kbd> |
-| Print / PDF | <kbd>Ctrl</kbd>+<kbd>P</kbd> |
+| Export (PDF, Word, HTML) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> |
+| Print | <kbd>Ctrl</kbd>+<kbd>P</kbd> |
 | Open in editor / show in folder | <kbd>Ctrl</kbd>+<kbd>E</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
 | Full screen | <kbd>F11</kbd> |
 | Home (recent files) | <kbd>Ctrl</kbd>+<kbd>H</kbd> |
@@ -125,7 +126,7 @@ cargo test              # unit tests
 
 `cargo test` covers the Markdown pipeline (Hebrew slugs, sanitizing, math, Mermaid and Graphviz detection, encodings, paths) and the updater (version comparison, release parsing, URLs, SHA-256).
 
-`python tests\e2e.py` runs the end-to-end suite (about 60 checks) against the real exe. It starts Mad Reader with throw-away settings folders, attaches [Playwright](https://playwright.dev/python/) to WebView2's DevTools port (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`), and drives the app with the keyboard and mouse. It covers per-paragraph direction, math, Mermaid and Graphviz, images, niqqud-insensitive search, links and history, themes, the Hebrew interface, live reload, recent files, the guide, the update flow (against a local fake release server) and saved settings. Pass `--out DIR` to keep the screenshots. It needs `pip install playwright` but no browser download, because it uses the WebView2 that ships with Windows.
+`python tests\e2e.py` runs the end-to-end suite (80 checks) against the real exe. It starts Mad Reader with throw-away settings folders, attaches [Playwright](https://playwright.dev/python/) to WebView2's DevTools port (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`), and drives the app with the keyboard and mouse. It covers per-paragraph direction, math, Mermaid and Graphviz, images, niqqud-insensitive search, links and history, themes, the Hebrew interface, live reload, recent files, the guide, the update flow (against a local fake release server), export to PDF, Word and HTML (the files are opened and inspected), and saved settings. Pass `--out DIR` to keep the screenshots. It needs `pip install playwright` but no browser download, because it uses the WebView2 that ships with Windows.
 
 
 ### How it works

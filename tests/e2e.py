@@ -11,6 +11,7 @@ Requires: pip install playwright   (no browser download needed — it attaches
 to the WebView2 that ships with Windows).
 """
 import argparse
+import zipfile
 import http.server
 import json
 import os
@@ -108,6 +109,9 @@ def main():
     srv, handler = serve_fake_release()
     env["MADREADER_UPDATE_URL"] = f"http://127.0.0.1:{srv.server_address[1]}/latest.json"
     env.pop("MADREADER_NO_UPDATE_CHECK", None)
+    # exports skip the save dialog and land here
+    env["MADREADER_EXPORT_DIR"] = str(tmp / "exports")
+    (tmp / "exports").mkdir()
     global UPDATE_HANDLER
     UPDATE_HANDLER = handler
     (tmp / "appdata").mkdir()
@@ -177,6 +181,8 @@ def run_checks(page, docs, sample, out, tmp):
     check("Hebrew paragraph is rtl", dirs[0] == "rtl", dirs)
     check("Hebrew paragraph starting with English word is rtl", dirs[1] == "rtl", dirs)
     check("English paragraph is ltr", dirs[2] == "ltr", dirs)
+    check("English paragraph in a Hebrew document is left-aligned",
+          js("getComputedStyle(document.querySelectorAll('#doc > p')[2]).textAlign") in ("start", "left"))
     check("document direction rtl", js("document.querySelector('#doc').dir") == "rtl")
     check("code block stays ltr", js("document.querySelector('#doc pre[data-lang]').getAttribute('dir')") == "ltr")
     check("TOC on the right for Hebrew doc", js("document.body.dataset.docdir") == "rtl")
@@ -271,6 +277,47 @@ def run_checks(page, docs, sample, out, tmp):
     check("Ctrl+D forces LTR", js("document.querySelector('#doc').dir") == "ltr")
     page.keyboard.press("Control+d")
     check("Ctrl+D back to auto", js("document.querySelector('#doc p[dir=ltr]') !== null"))
+
+    print("export (from the dark theme)")
+    exports = tmp / "exports"
+    page.keyboard.press("Control+Shift+s")
+    page.wait_for_selector("#modal-body .export-modal")
+    check("Ctrl+Shift+S opens Export with PDF, Word, HTML",
+          js("Array.from(document.querySelectorAll('.ex-opt')).map(b => b.dataset.x)") == ["pdf", "docx", "html"])
+    page.wait_for_timeout(400)
+    page.screenshot(path=str(out / "05-export-dialog.png"))
+    for fmt in ["docx", "pdf", "html"]:
+        if fmt != "docx":
+            page.keyboard.press("Control+Shift+s")
+            page.wait_for_selector("#modal-body .export-modal")
+        page.click(f".ex-opt[data-x={fmt}]")
+        try:
+            wait_js(page, "document.querySelector('#toast').classList.contains('has-actions') && !document.querySelector('#toast').hidden && document.querySelector('#busy').hidden", timeout=20000)
+            ok = (exports / f"sample.{fmt}").exists()
+        except Exception:
+            ok = False
+        check(f"{fmt} exported", ok, js("document.querySelector('#toast').textContent"))
+        page.evaluate("document.querySelector('#toast').hidden = true")
+    check("reader is back in the dark theme", js("document.documentElement.dataset.theme") == "dark")
+    with zipfile.ZipFile(exports / "sample.docx") as z:
+        names = z.namelist()
+        doc = z.read("word/document.xml").decode("utf-8")
+    check("docx: valid zip with the Word parts",
+          {"[Content_Types].xml", "word/document.xml", "word/styles.xml", "word/numbering.xml"} <= set(names), names)
+    check("docx: Hebrew paragraphs are right-to-left", "<w:bidi/>" in doc and "מסמך בדיקה" in doc)
+    check("docx: equations are Word equations", doc.count("<m:oMath>") >= 3, doc.count("<m:oMath>"))
+    media = [n for n in names if n.startswith("word/media/")]
+    check("docx: picture, diagram and graph embedded", len(media) >= 3 and len(set(media)) == len(media), media)
+    check("docx: headings use Word heading styles", 'w:val="Heading1"' in doc and 'w:val="Heading2"' in doc)
+    check("docx: links kept", "<w:hyperlink" in doc)
+    check("docx: nothing left over", "\x01" not in doc and "madreader.localhost" not in doc)
+    pdf = (exports / "sample.pdf").read_bytes()
+    check("pdf: a PDF file", pdf[:5] == b"%PDF-" and len(pdf) > 20000, len(pdf))
+    html = (exports / "sample.html").read_text(encoding="utf-8")
+    check("html: stands alone (no app URLs, no scripts)", "madreader.localhost" not in html and "<script" not in html)
+    check("html: MathML equations, SVG diagrams, picture inside",
+          "<math" in html and "<svg" in html and "data:image/png;base64," in html)
+    check("html: light theme, right-to-left", 'data-theme="light"' in html and 'dir="rtl"' in html)
 
     print("Hebrew interface")
     page.click("#btn-aa")

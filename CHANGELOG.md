@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — 2026-11-14
+
+- **Export** (⋯ → Export…, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>):
+  - **PDF** through WebView2, with page numbers and A4 or Letter paper from the Windows region.
+  - **Word (.docx)**, editable. Word heading styles, right-to-left Hebrew paragraphs, lists and tables, real Word equations (converted from the MathML), embedded diagrams and pictures, coloured code, working links and footnotes.
+  - **Web page (.html)**, a single file: pictures embedded, SVG diagrams, MathML equations.
+  - Exports always use the light theme. When an export finishes, a message offers **Open** and **Show in folder**.
+- **Print** (<kbd>Ctrl</kbd>+<kbd>P</kbd>) also lays the page out in the light theme and adds page numbers.
+- Fix: in a Hebrew document, English paragraphs and lists were right-aligned. They are now left-aligned.
+
 ## 1.2.0 — 2026-11-14
 
 - **Graphviz:** ```` ```dot ```` / ```` ```graphviz ```` blocks are laid out by Graphviz (Viz.js, WebAssembly) and work offline. All layout engines are available (`dot`, `neato`, `circo`, `fdp`, `twopi`, …). Graphs follow the theme unless they set their own colours, text on filled nodes stays readable, and Hebrew labels work.

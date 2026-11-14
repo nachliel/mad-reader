@@ -166,9 +166,17 @@ You can check by hand at any time in **⋯ → Check for updates…**. To turn o
 
 A portable copy (one you didn't install) opens the download page instead of updating itself.
 
-## Printing and PDF
+## Export: PDF, Word and web page
 
-<kbd>Ctrl</kbd>+<kbd>P</kbd> prints the document without the app chrome. Choose **Microsoft Print to PDF** (or *Save as PDF*) to export a PDF.
+**⋯ → Export…** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) saves the open document as:
+
+- **PDF**: the page as you see it, with page numbers. A4 or Letter, following your Windows region.
+- **Word (.docx)**: an editable document for Word, Google Docs or LibreOffice. Headings use Word's heading styles, so the navigation pane and a table of contents work. Hebrew paragraphs, lists and tables are right-to-left. Equations become real Word equations you can edit. Diagrams, graphs and pictures are embedded as images, and code keeps its colours.
+- **Web page (.html)**: one self-contained file that opens in any browser. Pictures are inside the file, diagrams stay sharp (SVG), and equations are MathML.
+
+Exports always use the light theme, whichever theme you read in. Pictures from the internet stay as links in the Word file (they appear normally in PDF and HTML).
+
+<kbd>Ctrl</kbd>+<kbd>P</kbd> prints the document without the app chrome.
 
 ## Command line
 

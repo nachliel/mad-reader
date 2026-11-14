@@ -9,6 +9,7 @@
 
 #![windows_subsystem = "windows"]
 
+mod export;
 mod i18n;
 mod install;
 mod render;
@@ -40,6 +41,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const INDEX_HTML: &str = include_str!("../assets/ui/index.html");
 const APP_CSS: &str = include_str!("../assets/ui/app.css");
 const APP_JS: &str = include_str!("../assets/ui/app.js");
+const EXPORT_JS: &str = include_str!("../assets/ui/export.js");
 const ICON_PNG: &[u8] = include_bytes!("../assets/app-256.png");
 const GUIDE_MD: &str = include_str!("../docs/guide.md");
 const GUIDE_HE_MD: &str = include_str!("../docs/guide.he.md");
@@ -61,12 +63,21 @@ enum UserEvent {
     UpdateChecked { result: Result<Option<update::Release>, String>, manual: bool },
     UpdateProgress(f64),
     UpdateDownloaded(Result<PathBuf, String>),
+    /// WebView2 finished (or failed) writing an exported PDF.
+    PdfDone { id: u32, result: Result<(), String> },
 }
 
 #[derive(Clone, PartialEq, Debug)]
 enum Doc {
     File(PathBuf),
     Guide,
+}
+
+/// An export in progress: the user picked `path`, the UI is building the file.
+struct PendingExport {
+    id: u32,
+    format: export::Format,
+    path: PathBuf,
 }
 
 #[derive(Default)]
@@ -300,6 +311,9 @@ fn run(initial: Option<PathBuf>, just_updated: bool) -> Result<(), Box<dyn std::
         just_updated,
         update: None,
         updating: false,
+        export: None,
+        export_seq: 0,
+        bg,
     };
 
     event_loop.run(move |event, _, control_flow| {
@@ -335,6 +349,10 @@ struct App {
     update: Option<update::Release>,
     /// The update is downloading.
     updating: bool,
+    export: Option<PendingExport>,
+    export_seq: u32,
+    /// WebView background (shows while loading, and in PDF page margins).
+    bg: (u8, u8, u8, u8),
 }
 
 impl App {
@@ -383,6 +401,13 @@ impl App {
             UserEvent::UpdateDownloaded(Err(e)) => {
                 self.updating = false;
                 self.update_error(&e);
+            }
+            UserEvent::PdfDone { id, result } => {
+                let _ = self.webview.set_background_color(self.bg);
+                if self.export.as_ref().is_some_and(|j| j.id == id) {
+                    let job = self.export.take().unwrap();
+                    self.export_done(&job, result);
+                }
             }
         }
     }
@@ -486,6 +511,7 @@ impl App {
                     "isDefault": install::is_default(),
                     "dismissedDefaultHint": self.settings.dismissed_default_hint,
                     "autoUpdate": !self.settings.updates.disabled,
+                    "paper": if export::paper_is_letter() { "letter" } else { "a4" },
                 });
                 self.js(&format!("MR.init({init})"));
                 if let Some(doc) = self.pending.take().or_else(|| self.current.clone()) {
@@ -573,6 +599,8 @@ impl App {
             "theme" => {
                 let dark = v.get("dark").and_then(Value::as_bool).unwrap_or(false);
                 self.window.set_theme(Some(if dark { Theme::Dark } else { Theme::Light }));
+                self.bg = if dark { (22, 23, 27, 255) } else { (255, 255, 255, 255) };
+                let _ = self.webview.set_background_color(self.bg);
             }
             "install" => match install::install() {
                 Ok(_) => {
@@ -637,8 +665,118 @@ impl App {
             "external" => {
                 shell_open(&s("url"));
             }
+            "export" => {
+                if let Some(f) = export::Format::parse(&s("format")) {
+                    self.start_export(f);
+                }
+            }
+            "exportFiles" => {
+                if let Some(job) = self.take_export(&v) {
+                    let result = export_parts(&v).and_then(|parts| match job.format {
+                        export::Format::Docx => export::write_docx(&job.path, &parts),
+                        _ => match parts.first() {
+                            Some((_, bytes)) => export::write_atomic(&job.path, bytes),
+                            None => Err("nothing to write".into()),
+                        },
+                    });
+                    self.export_done(&job, result);
+                }
+            }
+            "exportPdf" => {
+                let id = v.get("id").and_then(Value::as_u64).unwrap_or(0) as u32;
+                let Some(job) = self.export.as_ref().filter(|j| j.id == id && j.format == export::Format::Pdf) else { return };
+                // Paper is white: the WebView background shows in the page margins.
+                let _ = self.webview.set_background_color((255, 255, 255, 255));
+                let proxy = self.proxy.clone();
+                let started = export::print_to_pdf(
+                    &self.webview,
+                    &job.path,
+                    export::paper_is_letter(),
+                    Box::new(move |result| {
+                        let _ = proxy.send_event(UserEvent::PdfDone { id, result });
+                    }),
+                );
+                if let Err(e) = started {
+                    let _ = self.webview.set_background_color(self.bg);
+                    let job = self.export.take().unwrap();
+                    self.export_done(&job, Err(e));
+                }
+            }
+            "exportFailed" => {
+                if let Some(job) = self.take_export(&v) {
+                    self.export_done(&job, Err(s("error")));
+                }
+            }
+            "openExported" => {
+                shell_open(&s("path"));
+            }
+            "revealExported" => {
+                use std::os::windows::process::CommandExt;
+                let _ = std::process::Command::new("explorer.exe")
+                    .raw_arg(format!("/select,\"{}\"", s("path")))
+                    .spawn();
+            }
             _ => {}
         }
+    }
+
+    /// Export, step 1: ask where to save, then let the UI build the file
+    /// (it answers with exportFiles / exportPdf / exportFailed).
+    fn start_export(&mut self, format: export::Format) {
+        if self.export.is_some() || self.current.is_none() {
+            return;
+        }
+        let (stem, dir) = match &self.current {
+            Some(Doc::File(p)) => (
+                p.file_stem().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "document".into()),
+                p.parent().map(Path::to_path_buf),
+            ),
+            _ => (tr("Mad Reader guide", "המדריך של Mad Reader"), None),
+        };
+        let (kind, title) = match format {
+            export::Format::Pdf => ("PDF".to_string(), tr("Export as PDF", "ייצוא ל-PDF")),
+            export::Format::Docx => (tr("Word document", "מסמך Word"), tr("Export as a Word document", "ייצוא למסמך Word")),
+            export::Format::Html => (tr("Web page", "דף אינטרנט"), tr("Export as a web page", "ייצוא לדף אינטרנט")),
+        };
+        let ext = format.ext();
+        let mut dlg = rfd::FileDialog::new()
+            .set_title(&title)
+            .add_filter(&kind, &[ext])
+            .set_file_name(format!("{stem}.{ext}"))
+            .set_parent(&self.window);
+        if let Some(d) = dir {
+            dlg = dlg.set_directory(d);
+        }
+        // Tests set this to skip the dialog.
+        let preset = std::env::var_os("MADREADER_EXPORT_DIR").map(|d| PathBuf::from(d).join(format!("{stem}.{ext}")));
+        let Some(mut path) = preset.or_else(|| dlg.save_file()) else { return };
+        if !path.extension().is_some_and(|e| e.eq_ignore_ascii_case(ext)) {
+            path.as_mut_os_string().push(format!(".{ext}"));
+        }
+        self.export_seq += 1;
+        let id = self.export_seq;
+        self.export = Some(PendingExport { id, format, path });
+        let job = json!({
+            "id": id,
+            "format": ext,
+            "paper": if export::paper_is_letter() { "letter" } else { "a4" },
+            "generator": format!("Mad Reader {VERSION}"),
+        });
+        self.js(&format!("MR.exportBuild({job})"));
+    }
+
+    fn take_export(&mut self, v: &Value) -> Option<PendingExport> {
+        let id = v.get("id").and_then(Value::as_u64)?;
+        if self.export.as_ref()?.id as u64 == id { self.export.take() } else { None }
+    }
+
+    fn export_done(&self, job: &PendingExport, result: Result<(), String>) {
+        let name = job.path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let r = match result {
+            Ok(()) => json!({ "id": job.id, "ok": true, "path": job.path.to_string_lossy(), "name": name }),
+            Err(e) => json!({ "id": job.id, "ok": false, "name": name, "error": e }),
+        };
+        self.js(&format!("MR.exportDone({r})"));
     }
 
     fn open(&mut self, doc: Doc, fragment: Option<String>, push_history: bool, is_reload: bool) {
@@ -834,6 +972,22 @@ impl App {
     }
 }
 
+/// The files of an exportFiles message: `{name, text}` or `{name, b64}`.
+fn export_parts(v: &Value) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let files = v.get("files").and_then(Value::as_array).ok_or("no files")?;
+    files
+        .iter()
+        .map(|f| {
+            let name = f.get("name").and_then(Value::as_str).ok_or("unnamed part")?.to_string();
+            let bytes = match f.get("text").and_then(Value::as_str) {
+                Some(t) => t.as_bytes().to_vec(),
+                None => export::base64_decode(f.get("b64").and_then(Value::as_str).unwrap_or(""))?,
+            };
+            Ok((name, bytes))
+        })
+        .collect()
+}
+
 /// Load-modify-save so several open windows don't clobber each other's changes.
 fn update_settings(f: impl FnOnce(&mut Settings)) {
     let mut s = Settings::load();
@@ -885,6 +1039,7 @@ fn protocol(req: Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {
         "/" | "/index.html" => (Cow::Borrowed(INDEX_HTML.as_bytes()), "text/html; charset=utf-8"),
         "/app.css" => (Cow::Borrowed(APP_CSS.as_bytes()), "text/css; charset=utf-8"),
         "/app.js" => (Cow::Borrowed(APP_JS.as_bytes()), "text/javascript; charset=utf-8"),
+        "/export.js" => (Cow::Borrowed(EXPORT_JS.as_bytes()), "text/javascript; charset=utf-8"),
         "/highlight.css" => (Cow::Borrowed(render::highlight_css().as_bytes()), "text/css; charset=utf-8"),
         "/icon.png" => (Cow::Borrowed(ICON_PNG), "image/png"),
         p if p.starts_with("/vendor/") => match vendor_file(&p[8..]) {

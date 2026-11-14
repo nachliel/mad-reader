@@ -54,7 +54,7 @@ const STRINGS = {
     direction: 'Direction', dirAutoTip: 'Per paragraph, from its language', rtl: 'RTL · ימין', ltr: 'LTR',
     justify: 'Justify text', off: 'Off', on: 'On', language: 'Language',
     mEdit: 'Open in editor', mReveal: 'Show in folder', mOpenWith: 'Open with…', mCopyPath: 'Copy file path',
-    mPrint: 'Print / Save as PDF', mReload: 'Reload', mNewWindow: 'New window', mFullscreen: 'Full screen',
+    mPrint: 'Print…', mExport: 'Export…', mReload: 'Reload', mNewWindow: 'New window', mFullscreen: 'Full screen',
     mHome: 'Home', mShortcuts: 'Keyboard shortcuts', mDefaultApps: 'Default app settings…', mAbout: 'About Mad Reader',
     dropToOpen: 'Drop to open', autoShort: 'Auto',
     copy: 'Copy', copied: 'Copied', linkSection: 'Link to this section',
@@ -73,13 +73,18 @@ const STRINGS = {
     updDownloading: 'Downloading the update…', updRestart: 'Mad Reader will close, update and open again.',
     updError: 'Could not update', updRetry: 'Try again', updReleases: 'Releases page',
     checkNow: 'Check for updates', autoCheck: 'Check for updates automatically',
+    exportTitle: 'Export', exPdf: 'PDF', exPdfText: 'For reading and printing. Looks just like the page.',
+    exDocx: 'Word', exDocxText: 'Editable in Word, Google Docs or LibreOffice. Equations stay editable.',
+    exHtml: 'Web page', exHtmlText: 'A single .html file that opens in any browser.',
+    exPrint: 'Print…', exporting: 'Exporting…', exported: (n) => `Saved ${n}`, exOpen: 'Open', exShow: 'Show in folder',
+    exFailed: 'Could not export:',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcuts: [
       ['Open file', 'Ctrl O'], ['New window', 'Ctrl N'], ['Close window', 'Ctrl W'],
       ['Find in document', 'Ctrl F'], ['Next / previous match', 'F3 / Shift F3'],
       ['Table of contents', 'Ctrl B'], ['Text direction: Auto → RTL → LTR', 'Ctrl D'],
       ['Theme: Auto → Light → Sepia → Dark', 'Ctrl T'], ['Larger / smaller / reset text', 'Ctrl + / Ctrl − / Ctrl 0'],
-      ['Back / forward', 'Alt ← / Alt →'], ['Reload', 'F5 / Ctrl R'], ['Print or save as PDF', 'Ctrl P'],
+      ['Back / forward', 'Alt ← / Alt →'], ['Reload', 'F5 / Ctrl R'], ['Export: PDF, Word, web page', 'Ctrl Shift S'], ['Print', 'Ctrl P'],
       ['Open in editor', 'Ctrl E'], ['Show in folder', 'Ctrl Shift E'], ['Full screen', 'F11'],
       ['Home', 'Ctrl H'], ['Top / bottom', 'Home / End'], ['This list', 'F1'],
     ],
@@ -103,7 +108,7 @@ const STRINGS = {
     direction: 'כיוון', dirAutoTip: 'לכל פסקה לפי השפה שלה', rtl: 'ימין לשמאל', ltr: 'שמאל לימין',
     justify: 'יישור לשני הצדדים', off: 'כבוי', on: 'פעיל', language: 'שפה',
     mEdit: 'פתיחה בעורך', mReveal: 'הצגה בתיקייה', mOpenWith: 'פתיחה באמצעות…', mCopyPath: 'העתקת נתיב הקובץ',
-    mPrint: 'הדפסה / שמירה כ-PDF', mReload: 'רענון', mNewWindow: 'חלון חדש', mFullscreen: 'מסך מלא',
+    mPrint: 'הדפסה…', mExport: 'ייצוא…', mReload: 'רענון', mNewWindow: 'חלון חדש', mFullscreen: 'מסך מלא',
     mHome: 'מסך הבית', mShortcuts: 'קיצורי מקלדת', mDefaultApps: 'הגדרות אפליקציית ברירת מחדל…', mAbout: 'אודות Mad Reader',
     dropToOpen: 'שחררו כדי לפתוח', autoShort: 'אוטו׳',
     copy: 'העתקה', copied: 'הועתק', linkSection: 'קישור לסעיף הזה',
@@ -122,13 +127,18 @@ const STRINGS = {
     updDownloading: 'מוריד את העדכון…', updRestart: 'Mad Reader ייסגר, יתעדכן וייפתח מחדש.',
     updError: 'העדכון נכשל', updRetry: 'ניסיון נוסף', updReleases: 'דף הגרסאות',
     checkNow: 'בדיקת עדכונים', autoCheck: 'לבדוק עדכונים באופן אוטומטי',
+    exportTitle: 'ייצוא', exPdf: 'PDF', exPdfText: 'לקריאה ולהדפסה. נראה בדיוק כמו העמוד.',
+    exDocx: 'Word', exDocxText: 'ניתן לעריכה ב-Word, ב-Google Docs או ב-LibreOffice. גם הנוסחאות ניתנות לעריכה.',
+    exHtml: 'דף אינטרנט', exHtmlText: 'קובץ ‎.html יחיד שנפתח בכל דפדפן.',
+    exPrint: 'הדפסה…', exporting: 'מייצא…', exported: (n) => `נשמר: ${n}`, exOpen: 'פתיחה', exShow: 'הצגה בתיקייה',
+    exFailed: 'הייצוא נכשל:',
     shortcutsTitle: 'קיצורי מקלדת',
     shortcuts: [
       ['פתיחת קובץ', 'Ctrl O'], ['חלון חדש', 'Ctrl N'], ['סגירת החלון', 'Ctrl W'],
       ['חיפוש במסמך', 'Ctrl F'], ['התוצאה הבאה / הקודמת', 'F3 / Shift F3'],
       ['תוכן עניינים', 'Ctrl B'], ['כיוון טקסט: אוטומטי ← ימין לשמאל ← שמאל לימין', 'Ctrl D'],
       ['ערכת נושא: אוטומטי ← בהירה ← ספיה ← כהה', 'Ctrl T'], ['הגדלה / הקטנה / איפוס הטקסט', 'Ctrl + / Ctrl − / Ctrl 0'],
-      ['אחורה / קדימה', 'Alt ← / Alt →'], ['רענון', 'F5 / Ctrl R'], ['הדפסה או שמירה כ-PDF', 'Ctrl P'],
+      ['אחורה / קדימה', 'Alt ← / Alt →'], ['רענון', 'F5 / Ctrl R'], ['ייצוא: PDF, Word, דף אינטרנט', 'Ctrl Shift S'], ['הדפסה', 'Ctrl P'],
       ['פתיחה בעורך', 'Ctrl E'], ['הצגה בתיקייה', 'Ctrl Shift E'], ['מסך מלא', 'F11'],
       ['מסך הבית', 'Ctrl H'], ['תחילת / סוף המסמך', 'Home / End'], ['הרשימה הזאת', 'F1'],
     ],
@@ -235,7 +245,9 @@ function applyDirection() {
 /* ── Appearance ──────────────────────────────────────── */
 
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
+let paperMode = false; // printing / exporting: always the light theme
 function resolvedTheme() {
+  if (paperMode) return 'light';
   const t = state.ui.theme;
   return t === 'system' ? (darkMQ.matches ? 'dark' : 'light') : t;
 }
@@ -306,6 +318,7 @@ MR.init = (cfg) => {
   state.dismissedDefaultHint = cfg.dismissedDefaultHint;
   state.sysLang = cfg.sysLang || 'en';
   state.autoUpdate = cfg.autoUpdate !== false;
+  state.paper = cfg.paper || 'a4';
   applyUI();
   applyLang();
 };
@@ -616,6 +629,13 @@ $('#modal-body').addEventListener('click', (e) => {
     case 'check': send('checkUpdate'); break;
   }
 });
+$('#modal-body').addEventListener('click', (e) => {
+  const x = e.target.closest('[data-x]');
+  if (!x) return;
+  closeModal();
+  if (x.dataset.x === 'print') printDoc();
+  else send('export', { format: x.dataset.x });
+});
 $('#modal-body').addEventListener('change', (e) => {
   if (e.target.id === 'auto-update') {
     state.autoUpdate = e.target.checked;
@@ -640,12 +660,19 @@ MR.home = (recent) => {
   renderWelcome();
 };
 
-MR.toast = (msg) => {
+MR.toast = (msg, actions = []) => {
   const t = $('#toast');
   t.textContent = msg;
+  t.classList.toggle('has-actions', actions.length > 0);
+  for (const [label, fn] of actions) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => { t.hidden = true; fn(); };
+    t.appendChild(b);
+  }
   t.hidden = false;
   clearTimeout(MR._toastT);
-  MR._toastT = setTimeout(() => (t.hidden = true), 3200);
+  MR._toastT = setTimeout(() => (t.hidden = true), actions.length ? 8000 : 3200);
 };
 
 MR.installed = (ok) => {
@@ -1045,8 +1072,8 @@ $('#btn-aa').onclick = (e) => { e.stopPropagation(); togglePop('#pop-aa', e.curr
 $('#btn-more').onclick = (e) => {
   e.stopPropagation();
   const noFile = !state.doc || !state.doc.path;
-  for (const a of ['edit', 'reveal', 'openWith', 'copyPath', 'print', 'reload']) {
-    $(`[data-act="${a}"]`).disabled = noFile && a !== 'print' ? true : !state.doc;
+  for (const a of ['edit', 'reveal', 'openWith', 'copyPath', 'print', 'export', 'reload']) {
+    $(`[data-act="${a}"]`).disabled = noFile && a !== 'print' && a !== 'export' ? true : !state.doc;
   }
   togglePop('#pop-more', e.currentTarget);
 };
@@ -1072,7 +1099,8 @@ $('#pop-more').addEventListener('click', (e) => {
 
 function action(act) {
   switch (act) {
-    case 'print': if (state.doc) window.print(); break;
+    case 'print': printDoc(); break;
+    case 'export': showExport(); break;
     case 'copyPath': if (state.doc?.path) copyText(state.doc.path).then(() => MR.toast(t('pathCopied'))); break;
     case 'shortcuts': showShortcuts(); break;
     case 'about': showAbout(); break;
@@ -1083,6 +1111,93 @@ function action(act) {
     default: send(act);
   }
 }
+
+/* ── Export and print ────────────────────────────────── */
+
+/** Lay the page out for paper (light theme, every picture loaded), run
+ *  `fn`, then put the reader back as it was. */
+async function paperView(fn) {
+  const was = resolvedTheme();
+  const title = document.title;
+  paperMode = true;
+  document.title = state.doc.title || state.doc.name;
+  try {
+    if (was !== 'light') {
+      root.dataset.theme = 'light';
+      await Promise.allSettled([renderDiagrams(), renderGraphviz()]);
+    }
+    const imgs = $$('img', docEl);
+    for (const img of imgs) img.loading = 'eager';
+    await Promise.all(imgs.map((img) => img.decode().catch(() => {})));
+    await document.fonts.ready;
+    return await fn();
+  } finally {
+    paperMode = false;
+    document.title = title;
+    if (was !== 'light') {
+      root.dataset.theme = resolvedTheme();
+      renderDiagrams();
+      renderGraphviz();
+    }
+  }
+}
+
+function busy(on) {
+  const b = $('#busy');
+  if (on) {
+    // Covers the theme switch while the page is laid out for paper.
+    b.style.background = getComputedStyle(body).backgroundColor;
+    $('#busy-text').textContent = t('exporting');
+  }
+  b.hidden = !on;
+}
+
+let printing = false;
+function printDoc() {
+  if (!state.doc || printing) return;
+  printing = true;
+  paperView(() => new Promise((resolve) => {
+    addEventListener('afterprint', resolve, { once: true });
+    setTimeout(() => window.print(), 30);
+  })).finally(() => { printing = false; });
+}
+
+function showExport() {
+  if (!state.doc) return;
+  const opt = (fmt, badge, name, text) => `<button class="ex-opt" data-x="${fmt}"><span class="ex-badge ex-${fmt}">${badge}</span><span class="ex-text"><strong>${name}</strong><span>${text}</span></span></button>`;
+  modal(`<div class="export-modal"><h2>${t('exportTitle')}</h2>
+    ${opt('pdf', 'PDF', t('exPdf'), t('exPdfText'))}
+    ${opt('docx', 'DOC', t('exDocx'), t('exDocxText'))}
+    ${opt('html', '&lt;/&gt;', t('exHtml'), t('exHtmlText'))}
+    <div class="ex-foot"><button class="btn ghost" data-x="print">${t('exPrint')}<kbd>Ctrl P</kbd></button></div></div>`);
+}
+
+let exportJob = null;
+MR.exportBuild = async (job) => {
+  exportJob = job;
+  busy(true);
+  try {
+    await loadScript(ORIGIN + '/export.js');
+    await paperView(() => window.MRX.run(job));
+  } catch (e) {
+    send('exportFailed', { id: job.id, error: String((e && e.message) || e) });
+  }
+};
+
+MR.exportDone = (r) => {
+  window.MRX?.waiting?.(r);
+  if (window.MRX) window.MRX.waiting = null;
+  exportJob = null;
+  busy(false);
+  if (r.ok) {
+    MR.toast(t('exported')(r.name), [
+      [t('exOpen'), () => send('openExported', { path: r.path })],
+      [t('exShow'), () => send('revealExported', { path: r.path })],
+    ]);
+  } else {
+    MR.toast(`${t('exFailed')} ${r.error || ''}`);
+  }
+};
 
 /* ── Modals ──────────────────────────────────────────── */
 
@@ -1130,7 +1245,8 @@ document.addEventListener('keydown', (e) => {
   else if (ctrl && (k === '=' || k === '+')) setSize(1);
   else if (ctrl && (k === '-' || k === '_')) setSize(-1);
   else if (ctrl && k === '0') setSize(0);
-  else if (ctrl && (k === 'p' || k === 'P')) { if (state.doc) window.print(); }
+  else if (ctrl && (k === 'p' || k === 'P')) printDoc();
+  else if (ctrl && e.shiftKey && (k === 's' || k === 'S')) showExport();
   else if (k === 'F5' || (ctrl && (k === 'r' || k === 'R'))) send('reload');
   else if (ctrl && e.shiftKey && (k === 'e' || k === 'E')) send('reveal');
   else if (ctrl && (k === 'e' || k === 'E')) send('edit');

@@ -166,7 +166,8 @@
   <button data-act="openWith"><span data-i18n="mOpenWith">Open with…</span></button>
   <button data-act="copyPath"><span data-i18n="mCopyPath">Copy file path</span></button>
   <hr>
-  <button data-act="print"><span data-i18n="mPrint">Print / Save as PDF</span><kbd>Ctrl P</kbd></button>
+  <button data-act="export"><span data-i18n="mExport">Export…</span><kbd>Ctrl Shift S</kbd></button>
+  <button data-act="print"><span data-i18n="mPrint">Print…</span><kbd>Ctrl P</kbd></button>
   <button data-act="reload"><span data-i18n="mReload">Reload</span><kbd>F5</kbd></button>
   <button data-act="newWindow"><span data-i18n="mNewWindow">New window</span><kbd>Ctrl N</kbd></button>
   <button data-act="fullscreen"><span data-i18n="mFullscreen">Full screen</span><kbd>F11</kbd></button>
@@ -197,6 +198,7 @@
 <div id="drop-overlay" hidden><div data-i18n="dropToOpen">Drop to open</div></div>
 <div id="linkhint" hidden></div>
 <div id="toast" hidden></div>
+<div id="busy" hidden><div class="busy-card"><span class="spinner"></span><span id="busy-text"></span></div></div>
 
 <script src="http://madreader.localhost/app.js"></script>
 </body>

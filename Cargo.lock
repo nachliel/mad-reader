@@ -1303,7 +1303,7 @@ checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "mad-reader"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "ammonia",
  "embed-resource",
@@ -1317,6 +1317,8 @@ dependencies = [
  "sha2 0.11.1",
  "syntect",
  "tao",
+ "webview2-com",
+ "windows",
  "windows-sys 0.61.2",
  "winreg",
  "wry",
