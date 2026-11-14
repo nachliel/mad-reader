@@ -54,7 +54,7 @@ const STRINGS = {
     direction: 'Direction', dirAutoTip: 'Per paragraph, from its language', rtl: 'RTL · ימין', ltr: 'LTR',
     justify: 'Justify text', off: 'Off', on: 'On', language: 'Language',
     mEdit: 'Open in editor', mReveal: 'Show in folder', mOpenWith: 'Open with…', mCopyPath: 'Copy file path',
-    mPrint: 'Print…', mExport: 'Export…', mReload: 'Reload', mNewWindow: 'New window', mFullscreen: 'Full screen',
+    mPrint: 'Print…', mExport: 'Export…', mCopyRich: 'Copy as rich text', mReload: 'Reload', mNewWindow: 'New window', mFullscreen: 'Full screen',
     mHome: 'Home', mShortcuts: 'Keyboard shortcuts', mDefaultApps: 'Default app settings…', mAbout: 'About Mad Reader',
     dropToOpen: 'Drop to open', autoShort: 'Auto',
     copy: 'Copy', copied: 'Copied', linkSection: 'Link to this section',
@@ -78,13 +78,15 @@ const STRINGS = {
     exHtml: 'Web page', exHtmlText: 'A single .html file that opens in any browser.',
     exPrint: 'Print…', exporting: 'Exporting…', exported: (n) => `Saved ${n}`, exOpen: 'Open', exShow: 'Show in folder',
     exFailed: 'Could not export:',
+    exCopy: 'Copy', exCopyText: 'Formatted text to paste into Gmail, Outlook, Word or Google Docs.',
+    copiedRich: 'Copied. Paste it into Gmail, Outlook, Word or Google Docs.', copyRichFailed: 'Could not copy:',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcuts: [
       ['Open file', 'Ctrl O'], ['New window', 'Ctrl N'], ['Close window', 'Ctrl W'],
       ['Find in document', 'Ctrl F'], ['Next / previous match', 'F3 / Shift F3'],
       ['Table of contents', 'Ctrl B'], ['Text direction: Auto → RTL → LTR', 'Ctrl D'],
       ['Theme: Auto → Light → Sepia → Dark', 'Ctrl T'], ['Larger / smaller / reset text', 'Ctrl + / Ctrl − / Ctrl 0'],
-      ['Back / forward', 'Alt ← / Alt →'], ['Reload', 'F5 / Ctrl R'], ['Export: PDF, Word, web page', 'Ctrl Shift S'], ['Print', 'Ctrl P'],
+      ['Back / forward', 'Alt ← / Alt →'], ['Reload', 'F5 / Ctrl R'], ['Export: PDF, Word, web page', 'Ctrl Shift S'], ['Copy as rich text', 'Ctrl Shift C'], ['Print', 'Ctrl P'],
       ['Open in editor', 'Ctrl E'], ['Show in folder', 'Ctrl Shift E'], ['Full screen', 'F11'],
       ['Home', 'Ctrl H'], ['Top / bottom', 'Home / End'], ['This list', 'F1'],
     ],
@@ -108,7 +110,7 @@ const STRINGS = {
     direction: 'כיוון', dirAutoTip: 'לכל פסקה לפי השפה שלה', rtl: 'ימין לשמאל', ltr: 'שמאל לימין',
     justify: 'יישור לשני הצדדים', off: 'כבוי', on: 'פעיל', language: 'שפה',
     mEdit: 'פתיחה בעורך', mReveal: 'הצגה בתיקייה', mOpenWith: 'פתיחה באמצעות…', mCopyPath: 'העתקת נתיב הקובץ',
-    mPrint: 'הדפסה…', mExport: 'ייצוא…', mReload: 'רענון', mNewWindow: 'חלון חדש', mFullscreen: 'מסך מלא',
+    mPrint: 'הדפסה…', mExport: 'ייצוא…', mCopyRich: 'העתקה כטקסט מעוצב', mReload: 'רענון', mNewWindow: 'חלון חדש', mFullscreen: 'מסך מלא',
     mHome: 'מסך הבית', mShortcuts: 'קיצורי מקלדת', mDefaultApps: 'הגדרות אפליקציית ברירת מחדל…', mAbout: 'אודות Mad Reader',
     dropToOpen: 'שחררו כדי לפתוח', autoShort: 'אוטו׳',
     copy: 'העתקה', copied: 'הועתק', linkSection: 'קישור לסעיף הזה',
@@ -132,13 +134,15 @@ const STRINGS = {
     exHtml: 'דף אינטרנט', exHtmlText: 'קובץ ‎.html יחיד שנפתח בכל דפדפן.',
     exPrint: 'הדפסה…', exporting: 'מייצא…', exported: (n) => `נשמר: ${n}`, exOpen: 'פתיחה', exShow: 'הצגה בתיקייה',
     exFailed: 'הייצוא נכשל:',
+    exCopy: 'העתקה', exCopyText: 'טקסט מעוצב להדבקה ב-Gmail, ב-Outlook, ב-Word או ב-Google Docs.',
+    copiedRich: 'הועתק. אפשר להדביק ב-Gmail, ב-Outlook, ב-Word או ב-Google Docs.', copyRichFailed: 'ההעתקה נכשלה:',
     shortcutsTitle: 'קיצורי מקלדת',
     shortcuts: [
       ['פתיחת קובץ', 'Ctrl O'], ['חלון חדש', 'Ctrl N'], ['סגירת החלון', 'Ctrl W'],
       ['חיפוש במסמך', 'Ctrl F'], ['התוצאה הבאה / הקודמת', 'F3 / Shift F3'],
       ['תוכן עניינים', 'Ctrl B'], ['כיוון טקסט: אוטומטי ← ימין לשמאל ← שמאל לימין', 'Ctrl D'],
       ['ערכת נושא: אוטומטי ← בהירה ← ספיה ← כהה', 'Ctrl T'], ['הגדלה / הקטנה / איפוס הטקסט', 'Ctrl + / Ctrl − / Ctrl 0'],
-      ['אחורה / קדימה', 'Alt ← / Alt →'], ['רענון', 'F5 / Ctrl R'], ['ייצוא: PDF, Word, דף אינטרנט', 'Ctrl Shift S'], ['הדפסה', 'Ctrl P'],
+      ['אחורה / קדימה', 'Alt ← / Alt →'], ['רענון', 'F5 / Ctrl R'], ['ייצוא: PDF, Word, דף אינטרנט', 'Ctrl Shift S'], ['העתקה כטקסט מעוצב', 'Ctrl Shift C'], ['הדפסה', 'Ctrl P'],
       ['פתיחה בעורך', 'Ctrl E'], ['הצגה בתיקייה', 'Ctrl Shift E'], ['מסך מלא', 'F11'],
       ['מסך הבית', 'Ctrl H'], ['תחילת / סוף המסמך', 'Home / End'], ['הרשימה הזאת', 'F1'],
     ],
@@ -634,6 +638,7 @@ $('#modal-body').addEventListener('click', (e) => {
   if (!x) return;
   closeModal();
   if (x.dataset.x === 'print') printDoc();
+  else if (x.dataset.x === 'copy') copyRich();
   else send('export', { format: x.dataset.x });
 });
 $('#modal-body').addEventListener('change', (e) => {
@@ -1072,8 +1077,8 @@ $('#btn-aa').onclick = (e) => { e.stopPropagation(); togglePop('#pop-aa', e.curr
 $('#btn-more').onclick = (e) => {
   e.stopPropagation();
   const noFile = !state.doc || !state.doc.path;
-  for (const a of ['edit', 'reveal', 'openWith', 'copyPath', 'print', 'export', 'reload']) {
-    $(`[data-act="${a}"]`).disabled = noFile && a !== 'print' && a !== 'export' ? true : !state.doc;
+  for (const a of ['edit', 'reveal', 'openWith', 'copyPath', 'print', 'export', 'copyRich', 'reload']) {
+    $(`[data-act="${a}"]`).disabled = noFile && !['print', 'export', 'copyRich'].includes(a) ? true : !state.doc;
   }
   togglePop('#pop-more', e.currentTarget);
 };
@@ -1101,6 +1106,7 @@ function action(act) {
   switch (act) {
     case 'print': printDoc(); break;
     case 'export': showExport(); break;
+    case 'copyRich': copyRich(); break;
     case 'copyPath': if (state.doc?.path) copyText(state.doc.path).then(() => MR.toast(t('pathCopied'))); break;
     case 'shortcuts': showShortcuts(); break;
     case 'about': showAbout(); break;
@@ -1169,7 +1175,45 @@ function showExport() {
     ${opt('pdf', 'PDF', t('exPdf'), t('exPdfText'))}
     ${opt('docx', 'DOC', t('exDocx'), t('exDocxText'))}
     ${opt('html', '&lt;/&gt;', t('exHtml'), t('exHtmlText'))}
+    ${opt('copy', '⧉', t('exCopy'), t('exCopyText'))}
     <div class="ex-foot"><button class="btn ghost" data-x="print">${t('exPrint')}<kbd>Ctrl P</kbd></button></div></div>`);
+}
+
+/** The whole document as formatted text on the clipboard (HTML + plain
+ *  text). The clipboard item is created right away, with the content as a
+ *  promise, so the click still counts as the user's gesture. */
+let copying = false;
+function copyRich() {
+  if (!state.doc || copying) return;
+  copying = true;
+  busy(true);
+  const job = loadScript(ORIGIN + '/export.js').then(() => paperView(() => window.MRX.richHtml()));
+  const done = (err) => {
+    copying = false;
+    busy(false);
+    MR.toast(err ? `${t('copyRichFailed')} ${err.message || err}` : t('copiedRich'));
+  };
+  const fallback = () => job.then(({ html, text }) => {
+    const onCopy = (e) => {
+      e.clipboardData.setData('text/html', html);
+      e.clipboardData.setData('text/plain', text);
+      e.preventDefault();
+    };
+    document.addEventListener('copy', onCopy, { once: true });
+    const ok = document.execCommand('copy');
+    document.removeEventListener('copy', onCopy);
+    if (!ok) throw new Error('clipboard');
+  });
+  let write;
+  try {
+    write = navigator.clipboard.write([new ClipboardItem({
+      'text/html': job.then((r) => new Blob([r.html], { type: 'text/html' })),
+      'text/plain': job.then((r) => new Blob([r.text], { type: 'text/plain' })),
+    })]);
+  } catch (e) {
+    write = Promise.reject(e);
+  }
+  write.catch(fallback).then(() => done(), done);
 }
 
 let exportJob = null;
@@ -1247,6 +1291,7 @@ document.addEventListener('keydown', (e) => {
   else if (ctrl && k === '0') setSize(0);
   else if (ctrl && (k === 'p' || k === 'P')) printDoc();
   else if (ctrl && e.shiftKey && (k === 's' || k === 'S')) showExport();
+  else if (ctrl && e.shiftKey && (k === 'c' || k === 'C')) copyRich();
   else if (k === 'F5' || (ctrl && (k === 'r' || k === 'R'))) send('reload');
   else if (ctrl && e.shiftKey && (k === 'e' || k === 'E')) send('reveal');
   else if (ctrl && (k === 'e' || k === 'E')) send('edit');

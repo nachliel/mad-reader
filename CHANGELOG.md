@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — 2026-11-14
+
+- **Copy as rich text** (⋯ → Copy as rich text, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>, or the Export dialog): copies the whole document to the clipboard as formatted HTML plus plain text, ready to paste into Gmail, Outlook, Word or Google Docs.
+  - Every element carries its own inline style (mail programs drop style sheets).
+  - Diagrams and pictures are included as images.
+  - Equations are MathML, so Word and Outlook turn them into equations.
+  - Hebrew stays right-to-left.
+
 ## 1.3.0 — 2026-11-14
 
 - **Export** (⋯ → Export…, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>):

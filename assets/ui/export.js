@@ -755,6 +755,150 @@ ${clone.innerHTML}
 `;
   }
 
+  /* ── Copy as rich text ────────────────────────────────── */
+
+  // Mail programs drop <style> blocks, so every element carries its own
+  // style attribute, taken from the page as laid out in the light theme.
+  const INHERITED = ['color', 'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'text-align', 'direction'];
+  const OWN = ['background-color', 'border-top', 'border-right', 'border-bottom', 'border-left', 'border-radius', 'padding',
+    'margin', 'border-collapse', 'list-style-type', 'white-space', 'vertical-align', 'text-decoration-line'];
+  const DEFAULT_OWN = /^(rgba\(0, 0, 0, 0\)|0px|0px none.*|none|baseline|normal|separate|disc|0px 0px 0px 0px)$/;
+
+  /** Values Word's HTML reader understands: no double quotes (they end the
+   *  style attribute), named weights, and font names it can find. */
+  const wordSafe = (k, v) => {
+    if (k === 'font-weight') return +v >= 600 ? 'bold' : 'normal';
+    if (k === 'font-family') v = v.replace(/"Segoe UI Variable (Text|Display)"/g, '"Segoe UI"');
+    return v.replace(/"/g, "'");
+  };
+
+  function inlineStyles(live, copy) {
+    const cs = getComputedStyle(live);
+    const ps = live.parentElement ? getComputedStyle(live.parentElement) : null;
+    let st = '';
+    for (const k of INHERITED) {
+      const v = cs.getPropertyValue(k);
+      const heading = /^H[1-6]$/.test(live.tagName); // they become <p>: carry font and weight
+      if (!ps || ps.getPropertyValue(k) !== v || live === docEl || heading) st += `${k}:${wordSafe(k, v)};`;
+    }
+    for (const k of OWN) {
+      const v = cs.getPropertyValue(k);
+      if (v && !DEFAULT_OWN.test(v)) st += `${k}:${wordSafe(k, v)};`;
+    }
+    if (st) copy.setAttribute('style', st);
+    // labels drawn by CSS (GitHub alerts: "ⓘ Note") become real text
+    if (live.tagName === 'BLOCKQUOTE') {
+      const before = getComputedStyle(live, '::before');
+      const label = before.content;
+      if (label && label !== 'none' && label !== 'normal') {
+        const b = document.createElement('div');
+        b.textContent = label.replace(/^"|"$/g, '');
+        b.setAttribute('style', `font-weight:700;color:${before.color};margin-bottom:4px;`);
+        copy.prepend(b);
+      }
+    }
+    const lk = Array.from(live.children), ck = Array.from(copy.children);
+    for (let i = 0; i < lk.length && i < ck.length; i++) inlineStyles(lk[i], ck[i]);
+  }
+
+  X.richHtml = async () => {
+    let copy = docEl.cloneNode(true);
+    inlineStyles(docEl, copy);
+    // a plain <div>, and the style as text (setting .style would re-encode the
+    // font names with &quot;, which Word cannot read)
+    const rootStyle = (copy.getAttribute('style') || '').replace(/(^|;)(padding|margin|max-width|background-color)[^;]*;?/g, '$1');
+    const wrap = document.createElement('div');
+    wrap.setAttribute('dir', docEl.getAttribute('dir') || 'ltr');
+    wrap.setAttribute('style', rootStyle + 'background-color:#ffffff;max-width:800px;');
+    wrap.append(...copy.childNodes);
+    copy = wrap;
+    for (const el of copy.querySelectorAll('.copy-btn, .h-anchor')) el.remove();
+    for (const m of copy.querySelectorAll('mark.find-hit')) m.replaceWith(...m.childNodes);
+    for (const cb of copy.querySelectorAll('input[type=checkbox]')) cb.replaceWith(cb.checked ? '☑ ' : '☐ ');
+    // headings become styled paragraphs: Word maps <h1> to its own Heading
+    // style, whose font and toggled bold override ours
+    for (const h of copy.querySelectorAll('h1, h2, h3, h4, h5, h6')) {
+      const para = document.createElement('p');
+      for (const at of Array.from(h.attributes)) para.setAttribute(at.name, at.value);
+      para.append(...h.childNodes);
+      h.replaceWith(para);
+    }
+    // code: explicit line breaks (Word turns each newline into a paragraph with spacing)
+    for (const pre of copy.querySelectorAll('pre')) {
+      const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      for (const n of nodes) {
+        if (!n.nodeValue.includes('\n')) continue;
+        const v = n === nodes[nodes.length - 1] ? n.nodeValue.replace(/\n$/, '') : n.nodeValue;
+        const parts = v.split('\n');
+        const frag = document.createDocumentFragment();
+        parts.forEach((t, i) => { if (i) frag.appendChild(document.createElement('br')); if (t) frag.appendChild(document.createTextNode(t)); });
+        n.replaceWith(frag);
+      }
+    }
+    // equations: MathML (Word, Outlook and Apple Mail turn it into equations)
+    for (const k of copy.querySelectorAll('.math')) {
+      const mm = k.querySelector('.katex-mathml math');
+      if (!mm) continue;
+      for (const a of mm.querySelectorAll('annotation')) a.remove();
+      if (k.classList.contains('math-display')) mm.setAttribute('display', 'block');
+      k.replaceChildren(mm);
+    }
+    // diagrams and pictures: PNG images inside the HTML
+    const liveBlocks = $$('.mermaid-block, .graphviz-block', docEl);
+    const copyBlocks = Array.from(copy.querySelectorAll('.mermaid-block, .graphviz-block'));
+    await Promise.all(liveBlocks.map(async (b, i) => {
+      const svg = b.classList.contains('rendered') && b.querySelector('svg');
+      if (!svg) return;
+      try {
+        const { blob, w, h } = await svgToPng(svg);
+        const img = document.createElement('img');
+        img.src = await blobToDataUrl(blob);
+        img.width = Math.round(w);
+        img.height = Math.round(h);
+        img.alt = '';
+        copyBlocks[i].replaceChildren(img);
+      } catch {}
+    }));
+    const imgs = $$('img', docEl), copies = Array.from(copy.querySelectorAll('img:not([src^="data:"])'));
+    await Promise.all(imgs.map(async (img, i) => {
+      const c = copies[i];
+      if (!c) return;
+      const r = img.getBoundingClientRect();
+      if (r.width) { c.width = Math.round(r.width); c.height = Math.round(r.height); }
+      c.removeAttribute('loading');
+      c.removeAttribute('decoding');
+      const src = img.currentSrc || img.src;
+      if (!src.startsWith(ORIGIN)) { c.src = src; return; }
+      try {
+        const res = await fetch(src);
+        if (res.ok) c.src = await blobToDataUrl(await res.blob());
+      } catch {}
+    }));
+    // links: real addresses (files open in the default app)
+    for (const a of copy.querySelectorAll('a[href]')) {
+      const h = a.getAttribute('href');
+      if (h.startsWith('#')) continue;
+      const abs = new URL(h, state.doc.base).href;
+      a.setAttribute('href', abs.startsWith(ORIGIN + '/doc/') ? 'file:///' + abs.slice(ORIGIN.length + 5) : abs);
+    }
+    for (const el of [copy, ...copy.querySelectorAll('*')]) {
+      for (const at of Array.from(el.attributes)) {
+        if (at.name === 'class' || at.name === 'id' || at.name.startsWith('data-')) el.removeAttribute(at.name);
+      }
+    }
+    // plain text for programs that take only text
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:-99999px;top:0;width:800px';
+    host.appendChild(copy.cloneNode(true));
+    document.body.appendChild(host);
+    const text = host.innerText.replace(/\n{3,}/g, '\n\n').trim();
+    host.remove();
+    const html = copy.outerHTML;
+    return { html, text };
+  };
+
   /** The document styles of the reader (light theme), without the UI chrome. */
   function collectCss() {
     const keepSel = (sel) => sel.split(',').some((s) => {

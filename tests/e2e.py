@@ -282,8 +282,8 @@ def run_checks(page, docs, sample, out, tmp):
     exports = tmp / "exports"
     page.keyboard.press("Control+Shift+s")
     page.wait_for_selector("#modal-body .export-modal")
-    check("Ctrl+Shift+S opens Export with PDF, Word, HTML",
-          js("Array.from(document.querySelectorAll('.ex-opt')).map(b => b.dataset.x)") == ["pdf", "docx", "html"])
+    check("Ctrl+Shift+S opens Export with PDF, Word, HTML, Copy",
+          js("Array.from(document.querySelectorAll('.ex-opt')).map(b => b.dataset.x)") == ["pdf", "docx", "html", "copy"])
     page.wait_for_timeout(400)
     page.screenshot(path=str(out / "05-export-dialog.png"))
     for fmt in ["docx", "pdf", "html"]:
@@ -318,6 +318,29 @@ def run_checks(page, docs, sample, out, tmp):
     check("html: MathML equations, SVG diagrams, picture inside",
           "<math" in html and "<svg" in html and "data:image/png;base64," in html)
     check("html: light theme, right-to-left", 'data-theme="light"' in html and 'dir="rtl"' in html)
+
+    print("copy as rich text")
+    page.click("#doc h1")
+    page.keyboard.press("Control+Shift+c")
+    try:
+        wait_js(page, "!document.querySelector('#toast').hidden && document.querySelector('#busy').hidden", timeout=20000)
+    except Exception:
+        pass
+    check("Ctrl+Shift+C copies", js("document.querySelector('#toast').textContent").startswith("Copied"),
+          js("document.querySelector('#toast').textContent"))
+    def clipboard(fmt):
+        return subprocess.run(
+            ["powershell", "-NoProfile", "-STA", "-Command",
+             "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; "
+             f"[System.Windows.Forms.Clipboard]::GetText([System.Windows.Forms.TextDataFormat]::{fmt})"],
+            capture_output=True, text=True, encoding="utf-8").stdout
+    clip = clipboard("Html")  # (.NET reads its UTF-8 as ANSI: check structure only)
+    plain = clipboard("UnicodeText")
+    check("clipboard has formatted HTML and plain text with the Hebrew title",
+          "style=" in clip and "מסמך בדיקה" in plain, plain[:40])
+    check("clipboard: diagrams and picture as images, equations as MathML",
+          clip.count("data:image/png;base64,") >= 3 and "<math" in clip)
+    check("clipboard: no app URLs, no classes", "madreader.localhost/doc" not in clip and 'class="' not in clip)
 
     print("Hebrew interface")
     page.click("#btn-aa")

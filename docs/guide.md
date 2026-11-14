@@ -176,6 +176,8 @@ A portable copy (one you didn't install) opens the download page instead of upda
 
 Exports always use the light theme, whichever theme you read in. Pictures from the internet stay as links in the Word file (they appear normally in PDF and HTML).
 
+**Copy as rich text** (⋯ menu, or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>) puts the whole document on the clipboard with its formatting. Paste it into Gmail, Outlook, Word or Google Docs: headings, bold, lists, tables, coloured code, diagrams and pictures come along, and equations become Word equations in Word and Outlook. To copy only part of the page, select it and press <kbd>Ctrl</kbd>+<kbd>C</kbd> as usual.
+
 <kbd>Ctrl</kbd>+<kbd>P</kbd> prints the document without the app chrome.
 
 ## Command line

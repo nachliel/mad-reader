@@ -546,6 +546,7 @@ mark.find-hit.current { background: var(--mark-current); color: #000; }
 .export-modal .ex-pdf { background: #d93f3f; }
 .export-modal .ex-docx { background: #2b62c9; }
 .export-modal .ex-html { background: #e07b24; }
+.export-modal .ex-copy { background: #2f9e6e; font-size: 20px; }
 .export-modal .ex-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .export-modal .ex-text span { color: var(--muted); font-size: 13px; }
 .export-modal .ex-foot { display: flex; justify-content: flex-end; margin-top: 4px; }
